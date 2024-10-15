@@ -46,8 +46,6 @@ spec:
         value:
           additionalTrustedCAs:
           - name: additional-ca-1
-      - name: ntp
-        value: 172.18.10.101
       - name: nodePoolVolumes
         value:
           - name: containerd
