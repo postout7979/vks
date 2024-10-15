@@ -1,4 +1,4 @@
-apiVersion: cluster.x-k8s.io/v1bbest-effort-largeeta1
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 #define the cluster
 metadata:
@@ -32,9 +32,9 @@ spec:
         - class: node-pool
           name: node-pool-1
           replicas: 3
-      metadata:
-        annotations:
-          run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
+          metadata:
+            annotations:
+              run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
     variables:
       - name: vmClass
         value: best-effort-large
@@ -45,7 +45,7 @@ spec:
       - name: trust
         value:
           additionalTrustedCAs:
-          - name: harbor_ca
+          - name: additional-ca-1
       - name: ntp
         value: 172.18.10.101
       - name: nodePoolVolumes
@@ -54,9 +54,9 @@ spec:
             capacity:
               storage: 50Gi
             mountPath: /var/lib/containerd
-            storageClass: tkg-storage-profile
+            storageClass: tanzu-storage-policy
           - name: kubelet
             capacity:
               storage: 50Gi
             mountPath: /var/lib/kubelet
-            storageClass: tkg-storage-profile
+            storageClass: tanzu-storage-policy
