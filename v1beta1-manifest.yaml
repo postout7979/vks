@@ -1,0 +1,62 @@
+apiVersion: cluster.x-k8s.io/v1bbest-effort-largeeta1
+kind: Cluster
+#define the cluster
+metadata:
+  #user-defined name of the cluster; string
+  name: beta-tkg01
+  #kubernetes namespace for the cluster; string
+  namespace: ns-ichoi
+#define the desired state of cluster
+spec:
+  #specify the cluster network; required, there is no default
+  clusterNetwork:
+    #network ranges from which service VIPs are allocated
+    services:
+      #CAUTION: must not overlap with Supervisor
+      cidrBlocks: ["198.51.100.0/12"]
+    #network ranges from which Pod networks are allocated
+    pods:
+      #CAUTION: must not overlap with Supervisor
+      cidrBlocks: ["192.0.2.0/16"]
+    serviceDomain: "cluster.local"
+  topology:
+    class: tanzukubernetescluster
+    version: v1.26.13---vmware.1-fips.1-tkg.3
+    controlPlane:
+      replicas: 1
+      metadata:
+        annotations:
+          run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: node-pool-1
+          replicas: 3
+      metadata:
+        annotations:
+          run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
+    variables:
+      - name: vmClass
+        value: best-effort-large
+      - name: storageClass
+        value: tanzu-storage-policy
+      - name: defaultStorageClass
+        value: tanzu-storage-policy
+      - name: trust
+        value:
+          additionalTrustedCAs:
+          - name: harbor_ca
+      - name: ntp
+        value: 172.18.10.101
+      - name: nodePoolVolumes
+        value:
+          - name: containerd
+            capacity:
+              storage: 50Gi
+            mountPath: /var/lib/containerd
+            storageClass: tkg-storage-profile
+          - name: kubelet
+            capacity:
+              storage: 50Gi
+            mountPath: /var/lib/kubelet
+            storageClass: tkg-storage-profile
