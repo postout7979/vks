@@ -2,6 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: srvclb-ngnx
+  namespace: pod-nginx
 spec:
   selector:
     app: hello
