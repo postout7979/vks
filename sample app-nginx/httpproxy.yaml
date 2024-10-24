@@ -2,7 +2,7 @@ apiVersion: projectcontour.io/v1
 kind: HTTPProxy
 metadata:
   name: basic
-  namespace: default
+  namespace: pod-nginx
 spec:
   routes:
   - conditions:
