@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: srvclb-ngnx
+spec:
+  selector:
+    app: hello
+    tier: frontend
+  ports:
+  - protocol: "TCP"
+    port: 80
+      #  type: LoadBalancer
