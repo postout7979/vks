@@ -1,0 +1,30 @@
+kind: PostgresCluster
+metadata:
+  name: my-pg-cluster
+  namespace: default
+spec:
+  adminUsername: pgadmin
+    #  backupConfig:
+    #    backupRetentionDays: 30
+    #    schedules:
+    #    - name: default-full-backup
+    #      schedule: 59 23 * * 6
+    #      type: full
+    #    - name: default-incremental-backup
+    #      schedule: 59 23 1/1 * *
+    #      type: incremental
+    #  backupLocation:
+    #    name: default-backup-storage
+  databaseName: my-pg-cluster
+  infrastructurePolicy:
+    name: dsm-infra-policy
+  maintenanceWindow:
+    duration: 6h0m0s
+    startDay: SATURDAY
+    startTime: "23:59"
+  replicas: 1
+  storagePolicyName: vSAN Default Storage Policy
+  storageSpace: 20Gi
+  version: 14.10+vmware.v2.0.0
+  vmClass:
+    name: small
