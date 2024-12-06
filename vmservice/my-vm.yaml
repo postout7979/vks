@@ -1,0 +1,15 @@
+apiVersion: vmoperator.vmware.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: 'my-vm'
+  namespace: ichoi-ns01
+spec:
+  networkInterfaces:
+    - networkType: 'nsx-t'
+  className: best-effort-small
+  imageName: vmi-0267123254e4c8d28
+  powerState: poweredOn
+  storageClass: tanzu-storage-policy
+  vmMetadata:
+    transport: CloudInit
+    secretName: my-vm-secret
