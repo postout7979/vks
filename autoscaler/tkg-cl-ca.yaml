@@ -6,5 +6,5 @@ metadata:
   # {tkc name}-user-trusted-ca-secret
   name: tkg-cas-user-trusted-ca-secret
   # vsphere namespace
-  namespace: ichoi-ns01
+  namespace: demo-tkgsme
 type: Opaque
