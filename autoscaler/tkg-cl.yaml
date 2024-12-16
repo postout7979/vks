@@ -5,7 +5,7 @@ metadata:
   #user-defined name of the cluster; string
   name: tkg-cas
   #kubernetes namespace for the cluster; string
-  namespace: ichoi-ns01
+  namespace: demo-tkgsme
 #define the desired state of cluster
 spec:
   #specify the cluster network; required, there is no default
