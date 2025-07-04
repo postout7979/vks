@@ -5,27 +5,32 @@
 
 User 메뉴에서 admin user를 생성합니다.
 
-![image.png](attachment:e5ba3937-8ea9-45bb-b345-024ba6e03632:image.png)
+![image](https://github.com/user-attachments/assets/05e63daa-bb26-4f3a-9639-ec8b7922e824)
+
 
 Credentials 탭으로 이동하여, Password reset을 진행합니다.
 
-![image.png](attachment:b97314f6-a113-404e-a9a8-2fe95d226a4f:image.png)
+![image](https://github.com/user-attachments/assets/7a77ccb2-7b05-44ba-a1de-aeced38448aa)
+
 
 Role mapping 탭으로 이동해서 Assign role을 클릭합니다.
 
-![image.png](attachment:2f3e492b-bab0-4a0e-af7e-a91d61522c1f:image.png)
+![image](https://github.com/user-attachments/assets/a2d749e8-cbe6-4356-9cce-d6578030d8ad)
+
 
 “Filter by realm roles”로 변경 후, default-roles-master를 할당합니다.
 
-![image.png](attachment:f9b2fead-cef7-4fa8-8851-d4fe977e9b13:image.png)
+![image](https://github.com/user-attachments/assets/69490aea-5306-4b62-8e02-a1c9fe78ee83)
+
 
 **Client Scope 설정**
 
 client scope로 이동하여, 신규 Client Scope을 생성합니다.
 
-1. client scopes - Create client scope
+* client scopes - Create client scope
+![image](https://github.com/user-attachments/assets/04fd0876-7f28-4037-8b6b-2b4cbfc3e639)
 
-![image.png](attachment:208b9f0e-fde3-480a-be4b-7e3f2773ccdb:image.png)
+
 
 Name: groups
 
@@ -35,91 +40,111 @@ Display on consent screen: On
 
 Include in token scope: On
 
-![image.png](attachment:cbcf9654-bda3-4590-95e7-e1586b6df95d:image.png)
+![image](https://github.com/user-attachments/assets/f2518755-aefc-4a08-9a65-e347cd8beedf)
+
 
 Mappers 탭을 클릭 - Add predefined mapper를 클릭
 
-![image.png](attachment:ed56e10b-91af-4aa5-9b9b-5acacc7d3229:image.png)
+![image](https://github.com/user-attachments/assets/09fe4762-050c-4890-b8a0-0803c59f7f3c)
+
 
 groups을 검색하여 추가합니다.
 
-![image.png](attachment:d3727662-c9ac-4c08-a843-93249d1f7268:image.png)
+![image](https://github.com/user-attachments/assets/2aff6e19-ed5f-4b36-bea2-5f930cb25177)
+
 
 생성한 mapper groups을 클릭하고, 아래와 같이 설정 구성합니다.
 
-![image.png](attachment:67b8d718-03c7-4f2f-b8dc-f2cc7e242e4d:image.png)
+![image](https://github.com/user-attachments/assets/6e8a7a08-b16a-4a09-a9e5-0592bba1f4b0)
+
 
 **Realm roles 설정**
 
-1. 메인 메뉴의 Realm roles을 선택하고, Create role을 클릭합니다.
+메인 메뉴의 Realm roles을 선택하고, Create role을 클릭합니다.
 
-![image.png](attachment:7949106a-bb86-4630-95f3-09509d0574eb:image.png)
+![image](https://github.com/user-attachments/assets/fc6f0f83-3b2c-43af-a4b1-8a6c25dc8122)
+
 
 role name으로 tmc:admin과 tmc:member를 생성합니다.
 
-![image.png](attachment:f8c0e393-1390-4c19-a86b-e5b76b58a3cd:image.png)
+![image](https://github.com/user-attachments/assets/2d9bef59-871b-49fe-813a-9ec9cc73408b)
 
-![image.png](attachment:a4eaff47-2bf6-424a-a66d-9d9e175b36fd:image.png)
+
+![image](https://github.com/user-attachments/assets/b5573839-75d6-4e63-bf3c-7833bcd6f6d4)
+
 
 **Users - 사용자 추가**
 
 메인 메뉴에서 Users를 선택하고, Add user를 클릭합니다.
 
-![image.png](attachment:5651f48e-ee61-484d-9a36-8b121a7a47e0:image.png)
+![image](https://github.com/user-attachments/assets/4882cd60-a185-403a-9132-3606870402c0)
+
 
 관리자 및 사용자를 추가 합니다.
 
 - tmcadmin, tmcuser01, tmcuser02, etc…
 
-![image.png](attachment:c311ec2d-5e68-4857-a513-badc74e1ce67:image.png)
+![image](https://github.com/user-attachments/assets/bc57cc8f-d46d-41a0-af01-856af49d1d92)
+
 
 사용자를 생성하고, Set password을 클릭해서 암호를 설정합니다.
 
-![image.png](attachment:afc4aa74-c9e6-4134-a276-dd18f91e5f62:image.png)
+![image](https://github.com/user-attachments/assets/b5b9954c-2ce5-4837-9c3d-559ec2076a8e)
 
-![image.png](attachment:b87e310f-bce1-4fa1-ac42-0624fc604169:image.png)
+
+![image](https://github.com/user-attachments/assets/3592d219-373f-49de-bb2c-81c36e324737)
+
 
 **Groups 설정**
 
 메인 메뉴의 Groups을 선택하고, Create group을 클릭합니다.
 
-![image.png](attachment:a78ab7aa-3e94-49ea-b27f-13fb2ddf641a:image.png)
+![image](https://github.com/user-attachments/assets/7dfd7303-7c69-4c96-b6c0-4e6e7829f133)
+
 
 Group명을 tmc:admin, tmc:member로 추가 설정합니다.
 
 - 여러 그룹을 사용할 경우, 각 그룹을 모두 생성합니다.
 
-![image.png](attachment:0a16935e-a49d-4ff7-917b-1ff6db54369f:image.png)
+![image](https://github.com/user-attachments/assets/366de681-806c-4b67-b7a9-addbf7098558)
+
 
 생성된 그룹에 알맞은 사용자를 Add member를 클릭하여, 추가합니다.
 
-![image.png](attachment:1c799845-00ac-4cb2-b0fd-3f4e8f1a4698:image.png)
+![image](https://github.com/user-attachments/assets/71970d75-b4ac-4efe-b898-d200bfe64e26)
+
 
 사용자를 선택하고 Add 버튼을 클릭합니다.
 
-![image.png](attachment:2cc00ed5-202b-4469-8ae1-a60dfbcf7854:image.png)
+![image](https://github.com/user-attachments/assets/4bbd16ba-9353-47ec-83e3-b43b8b8de14d)
+
 
 그룹의 Role mapping 탭을 선택합니다.
 
-![image.png](attachment:4e7a2dfe-dc64-4123-930b-4b26e85c21cd:image.png)
+![image](https://github.com/user-attachments/assets/96dd52ef-9b55-440c-8205-408c3fadcdef)
+
 
 그룹명과 동일한 role mapping을 진행합니다.
 
-![image.png](attachment:acce5558-97b6-4409-a97a-c9d280aaa58b:image.png)
+![image](https://github.com/user-attachments/assets/db9e3591-a73c-4630-8027-43161d13406d)
+
 
 **Client 설정**
 
 클라이언트를 설정하기 위해 메인 메뉴에서 선택 후, Create client를 클릭합니다.
 
-![image.png](attachment:548e0878-5023-42ea-a665-f12c23e849fb:image.png)
+![image](https://github.com/user-attachments/assets/c87a7ff6-6453-46c2-b4c9-efd7a398f7a5)
+
 
 Client ID를 정의 합니다.
 
-![image.png](attachment:ed083478-47f8-46d3-97b8-113ae927a003:image.png)
+![image](https://github.com/user-attachments/assets/7dc46bec-4976-4310-98e1-1922a68c1b8a)
+
 
 클라이언트 인증, 인가 및 다이렉트 접근 권한을 부여 합니다.
 
-![image.png](attachment:12084c3a-8bbf-4d78-a507-71291b6bdc92:image.png)
+![image](https://github.com/user-attachments/assets/04de091a-8f1c-4d02-9c3c-3c7d4b3c00e8)
+
 
 tmc-sm의 domain FQDN 정보를 기반으로 아래와 같이 Home URL 및 Valid redirect URLs을 추가합니다.
 
@@ -131,14 +156,17 @@ tmc-sm의 domain FQDN 정보를 기반으로 아래와 같이 Home URL 및 Valid
 - https://pinniped-supervisor.<tmc-dns-zone>
 - https://<tmc-dns-zone>
 
-![image.png](attachment:ad0166e8-87e1-41c4-b682-bac3f4cb5088:image.png)
+![image](https://github.com/user-attachments/assets/284b362f-1b63-44ab-a14b-81a18d95ebac)
+
 
 Client scopes 탭으로 이동해서, 맞게 scope가 생성됐는지 확인합니다.
 
-![image.png](attachment:9677173f-d3e7-485a-b001-19cc623ec914:image.png)
+![image](https://github.com/user-attachments/assets/6db0a71f-7708-4dd6-a9fe-2fb747e73c8f)
+
 
 Credentials 탭으로 이동해서 Client Secret 값을 복사해서 노트패드에 붙여넣기 합니다.
 
-![image.png](attachment:1cf43340-73cb-40ff-83ad-5583820af451:image.png)
+![image](https://github.com/user-attachments/assets/2e52e8cb-ea32-4238-9c81-71b533eddf9e)
+
 
 -
