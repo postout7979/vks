@@ -1,4 +1,5 @@
-배포 및 실행 방법
+# 배포 및 실행 방법
+
 DB 비밀번호 인코딩:
 k8s/db-secret.yaml 파일의 POSTGRES_PASSWORD 값을 여러분의 실제 비밀번호를 base64로 인코딩한 값으로 대체합니다. (예: echo -n "my_strong_password" | base64)
 
