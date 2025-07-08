@@ -1,8 +1,8 @@
 ## Image list(Docker hub)
-|- postout7979/3ta-ap:v0.1
-|- postout7979/3ta-web:v0.1
-|- postout7979/3ta-ap:v0.2
-|- postout7979/3ta-web:v0.2
+- postout7979/3ta-ap:v0.1
+- postout7979/3ta-web:v0.1
+- postout7979/3ta-ap:v0.2
+- postout7979/3ta-web:v0.2
 
 # 배포 및 실행 방법
 
