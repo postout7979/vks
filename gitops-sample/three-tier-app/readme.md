@@ -49,19 +49,19 @@ kubectl label --overwrite ns 3ta-app pod-security.kubernetes.io/enforce=privileg
 
 # Secret과 PVC 먼저 생성
 ```Bash
-kubectl apply -f db-secret.yaml
-kubectl apply -f db-pvc.yaml
+kubectl apply -f db-secret.yaml -n 3ta-app
+kubectl apply -f db-pvc.yaml -n 3ta-app
 ```
 # Deployment 및 Service 생성 (의존성 순서 고려)
 ```Bash
-kubectl apply -f db-deployment.yaml
-kubectl apply -f db-service.yaml
+kubectl apply -f db-deployment.yaml -n 3ta-app
+kubectl apply -f db-service.yaml -n 3ta-app
 
-kubectl apply -f ap-deployment.yaml
-kubectl apply -f ap-service.yaml
+kubectl apply -f ap-deployment.yaml -n 3ta-app
+kubectl apply -f ap-service.yaml -n 3ta-app
 
-kubectl apply -f web-deployment.yaml
-kubectl apply -f web-service.yaml
+kubectl apply -f web-deployment.yaml -n 3ta-app
+kubectl apply -f web-service.yaml -n 3ta-app
 ```
 또는 모든 파일을 한 번에 적용할 수도 있지만, 순서가 중요한 경우 위에처럼 명시적으로 적용하는 것이 좋습니다.
 
@@ -136,12 +136,12 @@ kubectl rollout restart deployment web-deployment -n 3ta-app
 
 ```Bash
 kubectl edit deployment ap-deployment -n 3ta-app
-
+#아래 image path의 tag version을 수정
         image: harbor.tanzu.lab/library/3ta-ap:v0.1
         image: harbor.tanzu.lab/library/3ta-ap:v0.2
 
 kubectl edit deployment web-deployment -n 3ta-app
-
+#아래 image path의 tag version을 수정
         image: harbor.tanzu.lab/library/3ta-web:v0.1
         image: harbor.tanzu.lab/library/3ta-web:v0.2
 ```
