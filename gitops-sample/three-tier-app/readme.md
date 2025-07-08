@@ -1,4 +1,5 @@
 ## Image list(Docker hub)
+이 code의 web, ap 이미지는 docker hub의 postout7979 repository에 사전에 upload 되어 있습니다.
 - postout7979/3ta-ap:v0.1
 - postout7979/3ta-web:v0.1
 - postout7979/3ta-ap:v0.2
