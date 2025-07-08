@@ -16,7 +16,8 @@ docker push [your-dockerhub-username]/3ta-ap:v0.1
 ```
 
 # web 이미지 빌드 및 푸시
-```cd ../web
+```Bash
+cd ../web
 docker build -t [your-dockerhub-username]/3ta-web:v0.1 .
 docker push [your-dockerhub-username]/3ta-web:v0.1
 PostgreSQL 이미지는 공식 이미지를 사용하므로 따로 빌드할 필요 없습니다.
@@ -34,17 +35,20 @@ cd 3ta-app-v1/k8s
 ```
 
 # 먼저 namespace를 생성
-```kubectl create ns 3ta-app
+```Bash
+kubectl create ns 3ta-app
 kubectl label --overwrite ns 3ta-app pod-security.kubernetes.io/enforce=privileged
 ```
 모든 deployment, service, pvc, secret yaml 파일에는 'namespace 3ta-app'이 사전에 기재되어 있습니다.
 
 # Secret과 PVC 먼저 생성
-```kubectl apply -f db-secret.yaml
+```Bash
+kubectl apply -f db-secret.yaml
 kubectl apply -f db-pvc.yaml
 ```
 # Deployment 및 Service 생성 (의존성 순서 고려)
-```kubectl apply -f db-deployment.yaml
+```Bash
+kubectl apply -f db-deployment.yaml
 kubectl apply -f db-service.yaml
 
 kubectl apply -f ap-deployment.yaml
@@ -124,7 +128,7 @@ kubectl rollout restart deployment web-deployment -n 3ta-app
 
 여기서는 비교 확인을 위한 v0.1 tag의 이미지를 v0.2 tag의 이미지로 변경을 합니다.
 
-```
+```Bash
 kubectl edit deployment ap-deployment -n 3ta-app
 
         image: harbor.tanzu.lab/library/3ta-ap:v0.1
