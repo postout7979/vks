@@ -3,7 +3,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ap-service # WEB이 이 이름으로 AP에 접근
-  namespace: 3ta-app
   labels:
     app: ap
 spec:
