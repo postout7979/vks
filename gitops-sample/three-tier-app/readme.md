@@ -124,7 +124,8 @@ kubectl rollout restart deployment web-deployment -n 3ta-app
 
 여기서는 비교 확인을 위한 v0.1 tag의 이미지를 v0.2 tag의 이미지로 변경을 합니다.
 
-```kubectl edit deployment ap-deployment -n 3ta-app
+```
+kubectl edit deployment ap-deployment -n 3ta-app
 
         image: harbor.tanzu.lab/library/3ta-ap:v0.1
         image: harbor.tanzu.lab/library/3ta-ap:v0.2
