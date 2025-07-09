@@ -23,7 +23,7 @@ metadata:
   labels:
     app: kuard
   name: kuard
-  namespace: kuard
+#  namespace: kuard
 spec:
   replicas: 1
   selector:
