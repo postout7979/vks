@@ -40,6 +40,9 @@ spec:
 EOF
 ```
 
+```Bash
+kubectl apply -f deployment.yaml -n kuard
+
 배포된 생성 항목을 확인합니다.
 
 ```bash
