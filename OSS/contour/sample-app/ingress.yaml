@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: client-info-ingress
+  namespace: webinfo
+spec:
+  ingressClassName: ingress-contour
+  rules:
+  - host: webinfo.tanzu.lab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-info-web-service
+            port:
+              number: 80
