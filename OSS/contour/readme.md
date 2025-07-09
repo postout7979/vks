@@ -31,14 +31,17 @@ Number 2 - 기본 설정 contour를 배포합니다.
 
 ## 숫자 1을 선택하여, ingress-class-name을 사용할 경우 ##
 ![image](https://github.com/user-attachments/assets/ff859776-a30c-423c-9bed-0c992404d4a7)
+
 1번을 입럭하고서, contour 배포를 위한 namespace 이름을 입력합니다.(예: contour)
 
 ![image](https://github.com/user-attachments/assets/d6eb4ba5-77f0-4ff1-ab03-16199fbe10a7)
+
 이 항목에서 앞으로 ingress 혹은 httpproxy 배포 시, 사용할 ingress class name을 입력합니다.
 - 이는 생성되는 03-contour.yaml 파일의 deployment 항목의 container runtime의 servce 영역의 마지막 줄로 --ingress-class-name={your class name} 전달자를 envoy에 전달하여 사용하도록 합니다.
 - 입력된 ingress-class-name은 ingressClass.yaml을 생성하여, cluster에 contour controller에 대한 ingressclass를 생성합니다.
 
 ![image](https://github.com/user-attachments/assets/fe51e1ed-5ad9-4921-b317-9ab0c5343d34)
+
 이 항목은 사전에 배포한 ako 환경 설정에서 정의한 namespace label에 해당합니다. 이 label이 namespace에 할당된 경우에 배포된 ako를 통해서 Virtual Service를 제공받을 수 있습니다.
 - ako 환경 설정 values.yaml 파일 내, namespace에 대한 label key 및 value 값에 해당합니다.(이 예제에서는 label이 avi: ako 의 형태로 namespace에 추가됩니다.)
 - 해당 label은 contour가 배포되는 namespace에 추가되어, contour가 배포된 namespace의 envoy가 external LoadBalancer(여기서는 AKO로 구성된 Avi LB)로부터 IP를 가져오고, 네트워크 서비스를 제공합니다.
