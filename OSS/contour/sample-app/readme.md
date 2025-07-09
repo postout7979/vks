@@ -28,8 +28,12 @@ kubectl apply -f client-info-web-service.yaml -n webinfo
 kubectl apply -f ingress.yaml -n webinfo
 ```
 
+
+### httpproxy 배포할 경우
 ```bash
 kubectl apply -f proxy.yaml -n webinfo
 ```
 
+httpproxy 배포 후, web url 접속 시 화면
+- Avi controller에 접속 후, envoy가 할당된 Virtual Service의 system application 속성에 대한 TCP Proxy를 활성화 하여, X-Forwared-For를 받을 수 있도록 수정
 ![image](https://github.com/user-attachments/assets/f180737d-80a4-4c57-bd30-63fef21f615c)
