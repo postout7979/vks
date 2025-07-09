@@ -36,7 +36,7 @@ kubectl rollout restart deployment -n acme-fitness
 ```
 
 ## CreateContainerConfigError
-
+- secret이 존재하지 않음으로 발생
 ```bash
 kubectl create secret generic cart-redis-pass --from-literal=password=acmefitness -n acme-fitness
 
@@ -49,9 +49,8 @@ kubectl create secret generic users-redis-pass --from-literal=password=acmefitne
 ```
 
 ### ContainerCreating
-
+- configMap name이 다름으로 발생
 catalog-db-total.yaml
-
 ```bash
       volumes:
         - name: mongodata
@@ -71,9 +70,8 @@ catalog-db-total.yaml
 -
 
 ## ImagePullBackOff 혹은 ErrImagePull
-
+- image tag가 존재하지 않음으로 발생
 cart-redis-total.yaml
-
 ```bash
     spec:
       containers:
@@ -101,7 +99,7 @@ user-mongo-
 ### LoadBalancer EXTERNAL-IP pending
 
 - 잘못된 대역의 static IP 설정으로 인한 pending 발생
-
+- LoadBalancer IP으로 자동 할당 되도록 변경
 ```bash
   type: LoadBalancer
   loadBalancerIP: 172.18.106.101
@@ -111,19 +109,16 @@ user-mongo-
 ```
 
 ## CrashLoopBackOff
-
-pos-
-
 - point-of-sales-total.yaml 내의 container에서 다른 구성 요소와 연결되는 value 값 문제
+pos-
 
 ```bash
 
 ```
 
 ## CrashLoopBackOff
-
+- 신규 스케줄링을 노드에 차단
 ```bash
-# 신규 스케줄링을 노드에 차단
 kubectl cordon [node name] # 모든 노드를 cordon 진행
 
 # 스케줄링이 가능하도록 cordon 해제
@@ -131,7 +126,7 @@ kubectl uncordon [node name]
 ```
 
 busybox app 배포 진행
-
+- busybox 복제 수를 높게 진행하여, 스케줄링 및 리소스 문제 유발
 ```bash
 kubectl apply -f busybox.yaml
 ```
