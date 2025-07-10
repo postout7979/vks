@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: postgres-container
-        image: harbor.tanzu.lab/library/postgres
-#        image: postgres # 공식 PostgreSQL 이미지 사용
+#        image: harbor.tanzu.lab/library/postgres
+        image: postgres # 공식 PostgreSQL 이미지 사용
         ports:
         - containerPort: 5432 # PostgreSQL 기본 포트
         env:
