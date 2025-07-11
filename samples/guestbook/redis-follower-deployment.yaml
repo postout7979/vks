@@ -22,7 +22,7 @@ spec:
       containers:
       - name: follower
         image: us-docker.pkg.dev/google-samples/containers/gke/gb-redis-follower:v2
-        #image: tkgs-harbor.tanzu.lab/guestbook/gb-redis-follower:v2
+        #image: harbor.tanzu.lab/guestbook/gb-redis-follower:v2
         resources:
           requests:
             cpu: 100m
