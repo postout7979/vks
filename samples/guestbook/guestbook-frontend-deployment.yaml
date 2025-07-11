@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: php-redis
-        #image: us-docker.pkg.dev/google-samples/containers/gke/gb-frontend:v5
-        image: tkgs-harbor.tanzu.lab/guestbook/gb-frontend:v5
+        image: us-docker.pkg.dev/google-samples/containers/gke/gb-frontend:v5
+#        image: harbor.tanzu.lab/guestbook/gb-frontend:v5
         resources:
           requests:
             cpu: 100m
