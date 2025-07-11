@@ -8,7 +8,7 @@
 
 - TKC 내에서 사용자는 기본 환경 설정과 분리된 네트워크로부터 VIP 연결을 허용하거나, 기본 로드 밸런서와 다른 제품의 로드 밸런서를 사용하기 위해서 추가 로드 밸런서를 구성할 수 있습니다.
 - Avi LB는 TKC 내에 AKO(Avi Kubernetes Operator) 배포를 통해서, Avi LB로의 로드 밸런서 네트워크 사용을 배치할 수 있도록 지원합니다.
-- 아래 예제는 클러스터에 AKO 배포 시, label = avi:red 가 추가된 예제입니다.
+- 아래 예제는 클러스터에 AKO 배포 시, label = avi:ako 가 추가된 예제입니다.
 
 ---
 
@@ -23,7 +23,7 @@ kubectl label --overwrite ns kuard pod-security.kubernetes.io/enforce=privileged
 ako와 일치하는 label을 namespace에 추가합니다.
 
 ```yaml
-kubectl label --overwrite ns kuard avi=red
+kubectl label --overwrite ns kuard avi=ako
 ```
 
 label이 잘 추가된 것을 확인합니다.
@@ -31,7 +31,7 @@ label이 잘 추가된 것을 확인합니다.
 ```yaml
 $ kubectl describe ns kuard
 Name:         kuard
-Labels:       avi=red
+Labels:       avi=ako
               kubernetes.io/metadata.name=kuard
               pod-security.kubernetes.io/enforce=privileged
 Annotations:  <none>
