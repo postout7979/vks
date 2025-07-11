@@ -1,7 +1,7 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: srvclb-ngnx
+  name: svc-nginx
   namespace: pod-nginx
 spec:
   selector:
@@ -10,4 +10,4 @@ spec:
   ports:
   - protocol: "TCP"
     port: 80
-  type: LoadBalancer
+  type: ClusterIP
