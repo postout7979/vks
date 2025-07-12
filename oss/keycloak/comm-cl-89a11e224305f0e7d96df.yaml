@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: "2025-06-27T01:45:00Z"
+  finalizers:
+  - netoperator.vmware.com/service
+  labels:
+    run.tanzu.vmware.com/cluster.name: comm-cl
+    run.tanzu.vmware.com/service.name: keycloak
+    run.tanzu.vmware.com/service.namespace: keycloak
+    service.route.lbapi.run.tanzu.vmware.com/gateway-name: comm-cl-89a11e224305f0e7d96df
+    service.route.lbapi.run.tanzu.vmware.com/gateway-namespace: comm-ns
+    service.route.lbapi.run.tanzu.vmware.com/type: direct
+  name: comm-cl-89a11e224305f0e7d96df
+  namespace: comm-ns
+  ownerReferences:
+  - apiVersion: vmoperator.vmware.com/v1alpha2
+    blockOwnerDeletion: true
+    controller: true
+    kind: VirtualMachineService
+    name: comm-cl-89a11e224305f0e7d96df
+    uid: 54c8efcb-0920-401c-bfe2-619889f6be4f
+  resourceVersion: "76765"
+  uid: 66f8790c-a362-4640-99b0-88e8da657deb
+spec:
+  allocateLoadBalancerNodePorts: false
+  clusterIP: 10.96.1.189
+  clusterIPs:
+  - 10.96.1.189
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.10.152.201
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 30492
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 31635
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer: {}

@@ -4,10 +4,10 @@ select option in Yes No
 do
     case $option in
       Yes)
-              yringress="Yes"
+	      yringress="Yes"
             break;;
       No)
-              yringress="No"
+	      yringress="No"
             break;;
     esac
 done
@@ -482,7 +482,7 @@ metadata:
     # appear to be the internal address of the ELB. See docs/proxy-proto.md
     # for information about enabling the PROXY protocol on the ELB to recover
     # the original remote IP address.
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+    # service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
 spec:
   externalTrafficPolicy: Local
   ports:
@@ -746,7 +746,7 @@ EOF
 
 if [[ $yringress = "Yes" ]]
 then
-        echo "What is your ingress class name(ex> ingress-contour)?"
+	echo "What is your ingress class name(ex> ingress-contour)?"
   read ingressname
   echo "What is your ako labels(ex> avi: primary)?"
   read akolabels

@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    avi: ako
+    pod-security.kubernetes.io/enforce: privileged
+  name: contour
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour
+  namespace: contour
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: envoy
+  namespace: contour
