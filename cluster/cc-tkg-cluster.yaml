@@ -1,0 +1,65 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cc-tkg-cluster
+  namespace: ns-cis
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 172.200.0.0/16
+    serviceDomain: cluster.local
+    services:
+      cidrBlocks:
+      - 172.18.0.0/16
+  topology:
+    class: builtin-generic-v3.3.0
+    controlPlane:
+      replicas: 1
+    variables:
+    - name: osConfiguration
+      value:
+        trust:
+          additionalTrustedCAs:
+          - caCert:
+              secretRef:
+                key: additional-ca-1
+                name: cc-tkg-cluster-user-trusted-ca-secret
+    - name: vmClass
+      value: best-effort-large
+    - name: storageClass
+      value: tanzu-storage-policy
+    - name: vsphereOptions
+      value:
+        persistentVolumes:
+          availableStorageClasses:
+          - tanzu-storage-policy
+          availableVolumeSnapshotClasses:
+          - tanzu-storage-policy
+          defaultStorageClass: tanzu-storage-policy
+          defaultVolumeSnapshotClass: tanzu-storage-policy
+    - name: volumes
+      value:
+      - capacity: 30Gi
+        mountPath: /var/lib/containerd
+        name: containerd-override
+        storageClass: tanzu-storage-policy
+      - capacity: 30Gi
+        mountPath: /var/lib/kubelet
+        name: kubelet-override
+        storageClass: tanzu-storage-policy
+    - name: kubernetes
+      value:
+        certificateRotation:
+          enabled: true
+          renewalDaysBeforeExpiry: 90
+    version: v1.31.4+vmware.1-fips
+    workers:
+      machineDeployments:
+      - class: node-pool
+        name: node-pool-1
+        replicas: 3
+        variables:
+          overrides:
+          - name: vmClass
+            value: best-effort-medium

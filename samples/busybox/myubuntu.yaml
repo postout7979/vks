@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: stress
+  name: stress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress
+  template:
+    metadata:
+      labels:
+        app: stress
+    spec:
+      containers:
+      - image: harbor.tanzu.lab/library/myubuntu:latest
+        name: myubuntu
+        command: ["stress"]
+        args: ["--cpu", "2", "--io", "4", "--vm", "2", "--vm-bytes", "128M", "--timeout", "300s"]
+        imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+
+

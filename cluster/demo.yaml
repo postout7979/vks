@@ -1,0 +1,67 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  annotations:
+  labels:
+  name: demo-tkc
+  namespace: comm-ns
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 10.5.0.0/20
+    serviceDomain: cluster.local
+    services:
+      cidrBlocks:
+      - 10.7.0.0/20
+  topology:
+    class: builtin-generic-v3.3.0
+    controlPlane:
+      replicas: 1
+    variables:
+    - name: osConfiguration
+      value:
+        trust:
+          additionalTrustedCAs:
+          - caCert:
+              secretRef:
+                key: harbor.tanzu.lab
+                name: demo-tkc-user-trusted-ca-secret
+    - name: vmClass
+      value: best-effort-medium
+    - name: storageClass
+      value: tanzu-storage-policy
+    - name: vsphereOptions
+      value:
+        persistentVolumes:
+          availableStorageClasses:
+          - tanzu-storage-policy
+          defaultStorageClass: tanzu-storage-policy
+#          availableVolumeSnapshotClasses:
+#          - tanzu-storage-policy
+#          defaultVolumeSnapshotClass: tanzu-storage-policy
+    - name: volumes
+      value:
+      - capacity: 40Gi
+        mountPath: /var/lib/containerd
+        name: containerd-override
+        storageClass: tanzu-storage-policy
+      - capacity: 40Gi
+        mountPath: /var/lib/kubelet
+        name: kubelet-override
+        storageClass: tanzu-storage-policy
+    - name: kubernetes
+      value:
+        certificateRotation:
+          enabled: true
+          renewalDaysBeforeExpiry: 90
+    version: v1.31.4+vmware.1-fips
+    workers:
+      machineDeployments:
+      - class: node-pool
+        name: np01
+        replicas: 3
+        variables:
+          overrides:
+          - name: vmClass
+            value: best-effort-medium

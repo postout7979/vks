@@ -1,0 +1,21 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: client-info-proxy
+  namespace: webinfo
+  annotations:
+    projectcontour.io/ingress.class: ingress-contour
+spec:
+  ingressClassName: ingress-contour
+  routes:
+  - conditions:
+    - prefix: /
+    requestHeadersPolicy:
+      set:
+      - name: X-Client-IP
+        value: '%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%'
+    services:
+    - name: client-info-web-service
+      port: 80
+  virtualhost:
+    fqdn: webinfo.tanzu.lab
