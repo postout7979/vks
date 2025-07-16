@@ -28,7 +28,7 @@ alertmanager:
 ingress:
   alertmanager_prefix: /alertmanager/
   alertmanagerServicePort: 80
-  enabled: false
+  enabled: true
   prometheus_prefix: /
   prometheusServicePort: 80
   tlsCertificate:

@@ -19,7 +19,7 @@ envoy:
     disableWait: false
   hostNetwork: false
   hostPorts:
-    enable: false
+    enable: true
     http: 80
     https: 443
   terminationGracePeriodSeconds: 300

@@ -1,0 +1,108 @@
+#values.yaml
+istio:
+  ambientMode:
+    enabled: true
+    ztunnel:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1024Mi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+  enableStrictMTLS: false
+  gateways:
+    egress:
+      autoscaling:
+        enabled: false
+        maxReplicas: 5
+        minReplicas: 1
+      enabled: true
+      namespace: istio-egress
+      priorityClassName: ""
+      replicas: 1
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 1024Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    ingress:
+      autoscaling:
+        enabled: false
+        maxReplicas: 5
+        minReplicas: 1
+      enabled: true
+      namespace: istio-ingress
+      priorityClassName: ""
+      replicas: 1
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 1024Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  istioCNI:
+    enabled: true
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1024Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+  meshConfig:
+    accessLogFile: /dev/stdout
+    connectTimeout: 10s
+    enableDNSProxy: true
+    enablePrometheusMerge: false
+    enableTracing: true
+    ingressControllerMode: STRICT
+    ingressSelector: ingressgateway
+    meshID: "demo-tkc"
+    meshMTLS:
+      minProtocolVersion: TLSV1_2
+    proxy:
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 1024Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    trustDomain: cluster.local
+    trustDomainAliases: []
+    waypoint:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  namespace: istio-system
+  pilot:
+    autoscaling:
+      enabled: false
+      maxReplicas: 5
+      minReplicas: 1
+    priorityClassName: ""
+    replicas: 1
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 500m
+        memory: 2048Mi
+  support:
+    priorityClassName: ""
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 64Mi

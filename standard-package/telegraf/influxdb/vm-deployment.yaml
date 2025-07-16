@@ -1,0 +1,28 @@
+apiVersion: vmoperator.vmware.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  labels:
+    vm.name: influxdb-vm
+  name: influxdb-vm
+  namespace: comm-ns
+spec:
+  imageName: vmi-7360314ef0704e0bf
+  className: best-effort-small
+  powerState: poweredOn
+  storageClass: tanzu-storage-policy
+  advancedOptions:
+    defaultVolumeProvisioningOptions:
+      thinProvisioned: true
+  volumes:
+  - name: influxdb-vol
+    persistentVolumeClaim:
+      claimName: influxdb-pvc
+    #  networkInterfaces:
+    #  - networkName: vks-workload-01
+    #    networkType: vsphere-distributed
+  readinessProbe:
+    tcpSocket:
+      port: 22
+  vmMetadata:
+    transport: CloudInit
+    secretName: my-vm-bootstrap-data    

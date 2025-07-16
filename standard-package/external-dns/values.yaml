@@ -1,0 +1,17 @@
+namespace: tanzu-system-service-discovery
+deployment:
+  args:
+    - --registry=txt
+    - --txt-owner-id=cis
+    - --txt-prefix=external-dns-
+    - --provider=rfc2136
+    - --rfc2136-host=172.18.10.101
+    - --rfc2136-port=53
+    - --rfc2136-zone=tanzu.lab
+    - --rfc2136-insecure
+    - --rfc2136-tsig-axfr
+    - --source=service
+    - --source=ingress
+    - --source=contour-httpproxy
+    - --domain-filter=tanzu.lab
+    - --log-level=info
