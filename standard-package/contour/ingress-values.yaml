@@ -1,0 +1,26 @@
+infrastructure_provider: vsphere
+namespace: tanzu-system-ingress
+certificates:
+   caDuration: 8760h
+   caRenewBefore: 720h
+   leafDuration: 720h
+   leafRenewBefore: 360h
+contour:
+  configFileContents: {}
+  useProxyProtocol: false
+  replicas: 2
+  pspNames: vmware-system-restricted
+  logLevel: info
+envoy:
+  service:
+    type: LoadBalancer
+    annotations: {}
+    externalTrafficPolicy: Local
+    disableWait: false
+  hostNetwork: false
+  hostPorts:
+    enable: true
+    http: 80
+    https: 443
+  terminationGracePeriodSeconds: 300
+  logLevel: info

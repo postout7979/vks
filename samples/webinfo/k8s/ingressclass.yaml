@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: avi-lb
+  # ako 배포 시, values.yaml에   defaultIngController: 'true'를 설정했다면, 자동으로 annotations가 함께 추가 생성됩니다.
+  annotations:
+#    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: ako.vmware.com/avi-lb
+  parameters:
+    apiGroup: ako.vmware.com
+    kind: IngressParameters
+    name: external-lb

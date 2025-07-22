@@ -6,7 +6,7 @@ metadata:
   labels:
     app: client-info-web
 spec:
-  replicas: 2 # 여러 개의 Pod를 실행하여 고가용성 제공
+  replicas: 1 # 여러 개의 Pod를 실행하여 고가용성 제공
   selector:
     matchLabels:
       app: client-info-web
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: client-info-web-container
-        image: your-dockerhub-username/client-info-web:latest # Docker Hub에 푸시된 이미지 이름
+        image: postout7979/client-info-web:latest # Docker Hub에 푸시된 이미지 이름
         ports:
         - containerPort: 5000 # Flask 앱이 리스닝하는 포트
         env:

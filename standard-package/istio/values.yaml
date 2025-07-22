@@ -1,7 +1,7 @@
 #values.yaml
 istio:
   ambientMode:
-    enabled: true
+    enabled: false
     ztunnel:
       resources:
         limits:
@@ -54,9 +54,14 @@ istio:
         cpu: 100m
         memory: 100Mi
   meshConfig:
+    extensionProviders:
+      - name: "zipkin"
+        zipkin:
+          service: zipkin.istio-system.svc.cluster.local
+          port: 9411
     accessLogFile: /dev/stdout
     connectTimeout: 10s
-    enableDNSProxy: true
+    enableDNSProxy: false
     enablePrometheusMerge: false
     enableTracing: true
     ingressControllerMode: STRICT

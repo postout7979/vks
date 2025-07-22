@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: client-info-web-ingress
+  labels:
+    app: client-info-web
+spec:
+  ingressClassName: avi-lb
+  tls:
+  - hosts: 
+      - web-client.tanzu.lab
+    secretName: web-client-tls
+  rules:
+  - host: web-client.tanzu.lab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-info-web-service
+            port:
+              number: 443
+

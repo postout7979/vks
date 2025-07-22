@@ -1,14 +1,14 @@
 apiVersion: packaging.carvel.dev/v1alpha1
 kind: PackageInstall
 metadata:
-  name: contour
-  namespace: other-system-ingress
+  name: pkg-contour
+  namespace: contour-ingress
 spec:
   serviceAccountName: contour-sa
   packageRef:
-    refName: contour.tanzu.vmware.com
+    refName: contour.kubernetes.vmware.com
     versionSelection:
-      constraints: 1.28.2+vmware.1-tkg.1
+      constraints: 1.30.3+vmware.1-vks.1
   values:
   - secretRef:
       name: contour-data-values

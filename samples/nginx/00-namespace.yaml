@@ -3,4 +3,5 @@ kind: Namespace
 metadata:
   name: pod-nginx
   labels:
+    avi: ako
     pod-security.kubernetes.io/enforce: privileged
