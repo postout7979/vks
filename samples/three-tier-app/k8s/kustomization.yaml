@@ -1,9 +1,11 @@
-db-pvc.yaml
-db-secret.yaml
-db-service.yaml
-db-deployment.yaml
-ap-service.yaml
-ap-deployment.yaml
-web-service.yaml
-web-deployment.yaml
+kind: Kustomization
+resources:
+  - db-pvc.yaml
+  - db-secret.yaml
+  - db-service.yaml
+  - db-deployment.yaml
+  - ap-service.yaml
+  - ap-deployment.yaml
+  - web-service.yaml
+  - web-deployment.yaml
 
