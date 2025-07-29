@@ -18,7 +18,7 @@ envoy:
   service:
     type: LoadBalancer
     annotations: {}
-    externalTrafficPolicy: Cluster
+    externalTrafficPolicy: Local
     disableWait: false
   hostNetwork: false
   hostPorts:

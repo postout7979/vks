@@ -1,0 +1,113 @@
+# argocd-components.yaml
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-server
+  namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-server
+  namespace: argocd
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-server
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-server
+subjects:
+- kind: ServiceAccount
+  name: argocd-server
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+data:
+  # Contour가 TLS를 종료하므로, Argo CD 서버는 인바운드 트래픽을 HTTP로 처리할 수 있도록 --insecure 플래그를 추가합니다.
+  server.insecure: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  # 초기 admin 비밀번호는 생성 후 kubectl 명령으로 확인해야 합니다.
+  # 비밀번호는 argocd-initial-admin-secret 시크릿에 저장됩니다.
+  # server.secretkey: ... # 프로덕션 환경에서는 이 값을 설정해야 합니다.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-server
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: argocd-server
+        image: argoproj/argocd:v2.10.9 # 원하는 Argo CD 버전으로 변경하세요
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080 # HTTP
+        - containerPort: 8080 # gRPC (동일 포트)
+        env:
+        - name: ARGO_SERVER_INSECURE
+          value: "true" # ConfigMap과 동일하게 --insecure 플래그 전달
+        # 리소스 요청 및 제한 설정 (권장)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    # Contour가 gRPC (h2c) 프로토콜을 올바르게 프록시하도록 설정
+    projectcontour.io/upstream-protocol.h2c: "8080" # Argo CD 서버 컨테이너 포트
+spec:
+  selector:
+    app.kubernetes.io/name: argocd-server
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  - name: https # Contour가 TLS 종료 후 내부적으로 8080 포트로 포워딩할 때 사용
+    port: 443
+    targetPort: 8080
+    protocol: TCP
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

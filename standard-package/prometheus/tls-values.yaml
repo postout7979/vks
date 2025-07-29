@@ -138,7 +138,7 @@ ingress:
       N23W+VdoNCA6xz7HfM1MKkFuxkOUzIPKJyoJNqcWfoXzhG7poKA7jLjUbL63IaYS
       gApuYxpsuyc3tqaeAFMqbU2EFh4wQw==
       -----END PRIVATE KEY-----
-  virtual_host_fqdn: cis-monitoring.tanzu.lab
+  virtual_host_fqdn: monitoring.tanzu.lab
 kube_state_metrics:
   deployment:
     replicas: 1

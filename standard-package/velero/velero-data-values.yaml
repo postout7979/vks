@@ -1,0 +1,10 @@
+backupStorageLocation:
+  bucket: mybucket
+  config:
+    region: "minio"
+    s3ForcePathStyle: "true"
+    s3Url: "http://10.200.50.12:9000"
+  credential: |
+    [default]
+    aws_access_key_id=minioroot
+    aws_secret_access_key=minioroot

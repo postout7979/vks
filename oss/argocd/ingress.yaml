@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingess
+  namespace: argocd
+  annotations:
+    projectcontour.io/upstream-protocol.h2c: "443"
+spec:
+  tls:
+  - hosts:
+      - argocd.tanzu.lab
+    secretName: argocd-tls
+  rules:
+  - host: argocd.tanzu.lab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 443
+
+# argocd-ingress.yaml

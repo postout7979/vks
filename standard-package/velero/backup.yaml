@@ -1,0 +1,10 @@
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: guestbook
+  namespace: velero
+  annotations:
+    velero.io/csi-volumesnapshot-class_csi.vsphere.vmware.com: "volumesnapshotclass-velero"
+spec:
+    includedNamespaces:
+    - guestbook

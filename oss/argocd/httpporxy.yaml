@@ -1,0 +1,30 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  virtualhost:
+    fqdn: argocd.tanzu.lab
+    tls:
+      #      passthrough: true
+      secretName: argocd-tls
+  routes:
+    - conditions:
+        - prefix: /
+        - header:
+            name: Content-Type
+            contains: application/grpc
+      services:
+        - name: argocd-server
+          port: 80
+          protocol: h2c # allows for unencrypted http2 connections
+      timeoutPolicy:
+        response: 1h
+        idle: 600s
+        idleConnection: 600s
+    - conditions:
+        - prefix: /
+      services:
+        - name: argocd-server
+          port: 80
