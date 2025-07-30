@@ -12,5 +12,5 @@ spec:
     - protocol: TCP
       port: 80 # 서비스가 외부로 노출할 포트 (기본 웹 포트)
       targetPort: 5000 # 파드의 컨테이너가 실제로 리스닝하는 포트
-  type: NodePort # 외부에서 접근 가능하도록 NodePort 타입 사용 (간단한 테스트용)
+  type: ClusterIP # 외부에서 접근 가능하도록 NodePort 타입 사용 (간단한 테스트용)
   # type: LoadBalancer # 클라우드 환경에서는 LoadBalancer 타입이 더 적합합니다.

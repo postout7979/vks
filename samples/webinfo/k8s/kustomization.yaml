@@ -1,3 +1,4 @@
 client-info-deployment.yaml
 client-info-service.yaml
-client-info-ingress.yaml
+client-info-httpproxy.yaml
+hpa.yaml
