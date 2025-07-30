@@ -8,6 +8,4 @@ resources:
   - ap-deployment.yaml
   - web-service.yaml
   - web-deployment.yaml
-  - web-service-v2.yaml
-  - web-deployment-v2.yaml
   - http-proxy.yaml
