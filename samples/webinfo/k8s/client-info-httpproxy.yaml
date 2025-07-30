@@ -2,8 +2,6 @@ apiVersion: projectcontour.io/v1
 kind: HTTPProxy
 metadata:
   name: client-info
-  labels:
-    app: client-info-web
 spec:
   #  tls:
   #  - hosts: 
@@ -17,4 +15,3 @@ spec:
       services:
         - name: client-info-web-service
           port: 80
-
