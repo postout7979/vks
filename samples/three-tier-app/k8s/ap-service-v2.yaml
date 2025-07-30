@@ -1,4 +1,4 @@
-# k8s/ap-service.yaml
+# k8s/ap-service-v2.yaml
 apiVersion: v1
 kind: Service
 metadata:
