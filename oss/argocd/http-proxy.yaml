@@ -1,8 +1,7 @@
 apiVersion: projectcontour.io/v1
 kind: HTTPProxy
 metadata:
-  name: argocd-server
-  namespace: argocd
+  name: argocd-proxy
 spec:
   virtualhost:
     fqdn: argocd.tanzu.lab
@@ -17,7 +16,7 @@ spec:
             contains: application/grpc
       services:
         - name: argocd-server
-          port: 80
+          port: 443
           protocol: h2c # allows for unencrypted http2 connections
       timeoutPolicy:
         response: 1h
@@ -28,3 +27,4 @@ spec:
       services:
         - name: argocd-server
           port: 80
+

@@ -1,0 +1,19 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: 3ta-proxy
+spec:
+  virtualhost:
+    fqdn: 3ta.tanzu.lab
+  routes:
+    - conditions:
+        - prefix: /
+      services:
+        - name: web-service
+          port: 5000
+          weight: 50
+      services:
+        - name: web-service-v2
+          port: 5000
+          weight: 50
+
