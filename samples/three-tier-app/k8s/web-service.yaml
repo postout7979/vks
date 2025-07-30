@@ -12,5 +12,5 @@ spec:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-        #  type: NodePort # 외부 접근용 (클라우드에서는 LoadBalancer 사용)
-  type: LoadBalancer
+  type: ClusterIP # 외부 접근용 (클라우드에서는 LoadBalancer 사용)
+    #  type: LoadBalancer
