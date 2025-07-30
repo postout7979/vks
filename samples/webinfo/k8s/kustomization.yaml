@@ -1,4 +1,6 @@
-client-info-deployment.yaml
-client-info-service.yaml
-client-info-httpproxy.yaml
-hpa.yaml
+kind: Kustomization
+resources:
+  - client-info-deployment.yaml
+  - client-info-service.yaml
+  - client-info-httpproxy.yaml
+  - hpa.yaml
