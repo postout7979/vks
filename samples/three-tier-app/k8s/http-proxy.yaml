@@ -11,9 +11,6 @@ spec:
       services:
         - name: web-service
           port: 5000
-          weight: 50
-      services:
-        - name: web-service-v2
-          port: 6000
-          weight: 50
+          weight: 100
+
 
