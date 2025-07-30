@@ -10,6 +10,6 @@ spec:
     app: ap-v2
   ports:
     - protocol: TCP
-      port: 6001
+      port: 5001
       targetPort: 5001
   type: ClusterIP # 클러스터 내부에서만 접근 가능
