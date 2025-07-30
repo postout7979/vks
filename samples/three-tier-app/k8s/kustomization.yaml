@@ -9,4 +9,7 @@ resources:
   - web-service.yaml
   - web-deployment.yaml
   - ingress.yaml
+<<<<<<< HEAD
 
+=======
+>>>>>>> refs/remotes/origin/main
