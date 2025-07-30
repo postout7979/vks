@@ -10,7 +10,7 @@ spec:
     app: web-v2
   ports:
     - protocol: TCP
-      port: 6000
+      port: 5000
       targetPort: 5000
   type: ClusterIP # 외부 접근용 (클라우드에서는 LoadBalancer 사용)
     #  type: LoadBalancer
