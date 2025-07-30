@@ -8,4 +8,4 @@ resources:
   - ap-deployment.yaml
   - web-service.yaml
   - web-deployment.yaml
-
+  - ingress.yaml
