@@ -19,7 +19,7 @@ spec:
       - name: ap-container
 #        image: harbor.tanzu.lab/library/3ta-ap:v0.1 # AP 이미지 (빌드 후 푸시 필요)
         # public git
-        image: postout7979/3ta-ap:v0.2 # AP 이미지 (빌드 후 푸시 필요)
+        image: postout7979/3ta-ap:v0.1 # AP 이미지 (빌드 후 푸시 필요)
         ports:
         - containerPort: 5001
         env:
