@@ -15,5 +15,5 @@ spec:
   sessionAffinity: ClientIP
   sessionAffinityConfig:
     clientIP:
-    timeoutSeconds: 180 # Seconds
+      timeoutSeconds: 180 # Seconds
   type: ClusterIP # 클러스터 내부에서만 접근 가능
