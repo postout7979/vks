@@ -4,8 +4,8 @@ resources:
   - db-secret.yaml
   - db-service.yaml
   - db-deployment.yaml
-  - ap-service.yaml
-  - ap-deployment.yaml
+  - ap-service-v2.yaml
+  - ap-deployment-v2.yaml
   - web-service.yaml
   - web-deployment.yaml
   - http-proxy.yaml
