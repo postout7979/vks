@@ -30,7 +30,7 @@ spec:
         - containerPort: 5000
         env:
         - name: AP_SERVER_URL
-          value: "http://ap-service-v2:6001/api/items" # K8s 내부 DNS (ap-service:5001)
+          value: "http://ap-service:5001/api/items" # K8s 내부 DNS (ap-service:5001)
         - name: PYTHONUNBUFFERED
           value: "1"
         livenessProbe:
