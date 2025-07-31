@@ -18,9 +18,9 @@ spec:
       containers:
       - name: web-container
         # Canary test 시, v0.1 배포 후, v0.2로 전환
-        image: harbor.tanzu.lab/library/3ta-web:v0.1 # WEB 이미지 (빌드 후 푸시 필요)
+#        image: harbor.tanzu.lab/library/3ta-web:v0.1 # WEB 이미지 (빌드 후 푸시 필요)
         # public git
-#        image: postout7979/3ta-web:v0.1 # WEB 이미지 (빌드 후 푸시 필요)
+        image: postout7979/3ta-web:v0.2 # WEB 이미지 (빌드 후 푸시 필요)
         ports:
         - containerPort: 5000
         env:
