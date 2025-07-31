@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: web-rollout
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web-container
+        image: postout7979/3ta-web:v0.1
+        ports:
+        - containerPort: 5000
+        env:
+        - name: AP_SERVER_URL
+          value: "http://ap-service:5001/api/items"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+  minReadySeconds: 30
+  revisionHistoryLimit: 3
+  strategy:
+    canary: #Indicates that the rollout should use the Canary strategy
+      maxSurge: '25%'
+      maxUnavailable: 0
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 1m # 1 minutes
+        - setWeight: 40
+        - pause:
+            duration: 1m # 1 minutes
+        - setWeight: 60
+        - pause:
+            duration: 1m # 1 minutes
+        - setWeight: 80
+        - pause:
+            duration: {} # indefinitely
