@@ -6,7 +6,11 @@ certificates:
    leafDuration: 720h
    leafRenewBefore: 360h
 contour:
-  configFileContents: {}
+  configFileContents:
+    gateway:
+      gatewayRef:
+        name: contour
+        namespace: tanzu-system-ingress
   useProxyProtocol: false
   replicas: 2
   pspNames: vmware-system-restricted

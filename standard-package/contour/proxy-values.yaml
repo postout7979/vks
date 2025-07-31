@@ -6,7 +6,11 @@ certificates:
    leafDuration: 720h
    leafRenewBefore: 360h
 contour:
-  configFileContents: {}
+  configFileContents:
+    gateway:
+      gatewayRef:
+        name: contour
+        namespace: tanzu-system-ingress
   # useProxyProtocol is false will use ingress service.
   #useProxyProtocol: false
   # useProxyProtocol is true will use httpproxy service. update alb application profile.
