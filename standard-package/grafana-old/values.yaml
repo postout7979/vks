@@ -1,0 +1,41 @@
+#! The namespace in which to deploy grafana.
+namespace: tanzu-system-dashboards
+
+grafana:
+  #! The grafana configuration.
+  config:
+    #! Refer to https://grafana.com/docs/grafana/latest/administration/provisioning/#example-data-source-config-file
+    datasource_yaml: |-
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          # prometheus namespace
+          url: http://prometheus-server.tanzu-system-monitoring.svc.cluster.local
+          access: proxy
+          tlsSkipVerify: true
+          isDefault: true
+  pvc:
+    storageClassName: tanzu-storage-policy
+    accessMode: ReadWriteOnce
+    storage: 20Gi
+  secret:
+    admin_password: YWRtaW4=
+    admin_user: YWRtaW4=
+    type: Opaque
+  service:
+    port: 80
+    targetPort: 3000
+    # LoadBalancer 배포를 할 경우에는 type: LoadBalancer 로 변경합니다. 단, ingress는 enabled: false로 변경합니다.
+    type: ClusterIP
+ingress:
+  enabled: true
+  prefix: /
+  servicePort: 80
+  virtual_host_fqdn: grafana-cis.tanzu.lab
+  tlsCertificate:
+    tls:
+      crt:
+      key:
+    ca:
+      crt:
