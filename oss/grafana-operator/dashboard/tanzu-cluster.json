@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "10.4.18"
+      "version": "11.3.0"
     },
     {
       "type": "panel",
