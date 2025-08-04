@@ -159,7 +159,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -244,7 +244,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -329,7 +329,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -411,7 +411,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -491,7 +491,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -571,7 +571,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -651,7 +651,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -731,7 +731,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -811,7 +811,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -904,7 +904,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1037,7 +1037,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "10.4.18",
+      "pluginVersion": "11.3.0",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
