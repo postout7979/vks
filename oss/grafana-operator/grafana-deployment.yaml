@@ -15,7 +15,7 @@ spec:
     spec:
       #      ingressClassName: 
       rules:
-        - host: gf-op.tanzu.lab
+        - host: grafana.tanzu.lab
           http:
             paths:
               - backend:
