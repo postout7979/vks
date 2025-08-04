@@ -1,0 +1,20 @@
+# k8s/web-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  labels:
+    app: web
+spec:
+  selector:
+    app: web
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 180 # seconds
+  type: ClusterIP # 외부 접근용 (클라우드에서는 LoadBalancer 사용)
+    #  type: LoadBalancer
