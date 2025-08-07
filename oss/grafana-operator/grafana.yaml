@@ -11,8 +11,8 @@ spec:
     auth:
       disable_login_form: "false"
     security:
-      admin_user: root
-      admin_password: secret
+      admin_user: admin
+      admin_password: VMware1!
 # ingress tls는 https://grafana.github.io/grafana-operator/docs/examples/ingress_https/readme/ 참조
   ingress:
     spec:
@@ -37,7 +37,11 @@ spec:
           containers:
             - name: grafana
               readinessProbe:
-                failureThreshold: 3
+                failureThreshold: 5
+                  #          volumes:
+                  #            - name: grafana-data
+                  #              persistentVolumeClaim:
+                  #                claimName: grafana-pvc
 ---
 # 아래와 같은 형태로 prometheus-server 데이터소스를 추가합니다.
 apiVersion: grafana.integreatly.org/v1beta1
@@ -49,7 +53,7 @@ spec:
     matchLabels:
       dashboards: "grafana"
   datasource:
-    name: Prometheus
+    name: prometheus
     type: prometheus
     access: proxy
 # VKS Stancard Package를 통한 prometheus-server 배포 시, service 정보
@@ -59,36 +63,3 @@ spec:
     jsonData:
       'tlsSkipVerify': true
       'timeInterval': "5s"
----
-# 아래와 같은 형태로 json 구문을 포함한 DASHBOARD를 배포합니다.
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
-  name: sample-dashboard
-spec:
-  resyncPeriod: 30s
-  instanceSelector:
-    matchLabels:
-      dashboards: "grafana"
-  json: >
-    {
-      "title": "Simple Dashboard",
-      "timezone": "browser",
-      "refresh": "5s",
-      "panels": [],
-      "time": {
-        "from": "now-6h",
-        "to": "now"
-      }
-    }
----
-# 아래와 같은 형태로 github url 주소로 json 파일로 DASHBOARD를 배포합니다.
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
-  name: k8s-dashboard-from-url
-spec:
-  instanceSelector:
-    matchLabels:
-      dashboards: "grafana"
-  url: "https://github.com/postout7979/vks/blob/add6057a95fb2ddf581526f4fe2a7c4f39ec7dce/oss/grafana-operator/dashboard/15661.json"
