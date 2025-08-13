@@ -1,0 +1,214 @@
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import os,requests
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
+from functools import wraps
+
+# InsecureRequestWarning 경고를 무시하도록 설정
+warnings.simplefilter('ignore', InsecureRequestWarning)
+
+app = Flask(__name__)
+# Flask 세션 관리를 위한 비밀 키 설정. 실제 운영 환경에서는 더 안전한 키를 사용해야 합니다.
+app.secret_key = os.urandom(24)
+
+# Avi Controller 정보
+AVI_CONTROLLER_IP = os.environ.get("AVI_CONTROLLER_IP")
+# 인증에 필요한 API 버전.
+API_VERSION = "30.1.1"
+
+# 로그인 상태를 확인하는 데코레이터
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'avi_api_sessionid' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route('/')
+@login_required
+def index():
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        # Avi Controller에 로그인 요청을 보낼 URL
+        login_url = f"https://{AVI_CONTROLLER_IP}/login"
+
+        # 인증에 필요한 헤더와 데이터
+        headers = {
+            "Content-Type": "application/json",
+            "X-Avi-Version": API_VERSION
+        }
+        data = {
+            "username": username,
+            "password": password
+        }
+
+        try:
+            # SSL 인증서 검증을 건너뛰고 로그인 요청
+            response = requests.post(login_url, json=data, headers=headers, verify=False)
+            response.raise_for_status()
+
+            # 응답에서 세션 ID (API 토큰) 추출
+            session_id = response.cookies.get('sessionid')
+            session_token = response.cookies.get('csrftoken')
+            session_cookies = response.cookies
+
+            if session_id:
+                # 세션에 API 토큰 저장
+                session['avi_api_sessionid'] = session_id
+                session['avi_api_token'] = session_token
+                session['session_cookies'] = dict(session_cookies)
+                return redirect(url_for('index'))
+            else:
+                return "로그인 실패: 토큰을 가져올 수 없습니다.", 401
+        except requests.exceptions.RequestException as e:
+            print(f"로그인 에러: {str(e)}")
+            # 이제 'True' 대신 실제 오류 메시지를 전달합니다.
+            return render_template('login.html', error="로그인 정보가 올바르지 않습니다.")
+
+    # GET 요청 시 로그인 페이지 렌더링
+    return render_template('login.html')
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    token = session.get('avi_api_token')
+    session_cookies = session.get('session_cookies')
+    headers = {
+        "X-CSRFToken": token, # CSRF 토큰으로 세션 ID 사용
+        "Referer": f"https://{AVI_CONTROLLER_IP}"
+    }
+
+    # Avi Controller에 로그아웃 요청을 보낼 URL
+    logout_url = f"https://{AVI_CONTROLLER_IP}/logout"
+
+    try:
+        response = requests.post(logout_url, headers=headers, cookies=session_cookies, verify=False)
+        response.raise_for_status()
+
+    except requests.exceptions.RequestException as e:
+        # 요청 중 발생한 에러 처리
+        return f"logout error: {str(e)}", 500
+
+    # 세션에서 API 토큰 삭제
+    session.pop('avi_api_token', None)
+    session.pop('avi_api_sessionid', None)
+    return redirect(url_for('login'))
+
+# VirtualService 목록과 UUID를 가져오는 새로운 API 엔드포인트 추가
+@app.route('/api/vs_list')
+@login_required
+def get_vs_list():
+    token = session.get('avi_api_token')
+    apisessionid = session.get('avi_api_sessionid')
+    headers = {
+        "X-Avi-Version": API_VERSION,
+        "X-CSRFToken": token
+    }
+
+    # VirtualService 목록을 가져오는 Avi API 엔드포인트
+    url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
+
+    try:
+        response = requests.get(url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        response.raise_for_status()
+        vs_data = response.json()
+
+        # 이름과 UUID를 함께 추출하여 딕셔너리 리스트로 반환
+        vs_list = [{'name': vs['name'], 'uuid': vs['uuid']} for vs in vs_data.get('results')]
+        return jsonify(vs_list)
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/performance')
+@login_required
+def get_performance_data():
+    token = session.get('avi_api_token')
+    apisessionid = session.get('avi_api_sessionid')
+    headers = {
+        "X-Avi-Version": API_VERSION,
+        "X-CSRFToken": token
+    }
+
+    # 모든 VirtualService에 대한 성능 지표를 가져오는 엔드포인트
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.avg_complete_conns&limit=10"
+
+    try:
+        # Get VirtualService list to map UUIDs to names
+        vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
+        vs_response = requests.get(vs_list_url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        vs_response.raise_for_status()
+        vs_data = vs_response.json()
+
+        # Create a dictionary to map UUIDs to names
+        vs_name_map = {vs['uuid']: vs['name'] for vs in vs_data.get('results', [])}
+
+        response = requests.get(url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        response.raise_for_status()
+        performance_data = response.json()
+
+        # Modify the response to include the VirtualService name
+        # `performance_data`의 'results' 배열을 순회합니다.
+        if performance_data.get('results'):
+            for item in performance_data['results']:
+                metric_entity_uuid = item.get('entity_uuid')
+                # 'item'의 'metric_entity_uuid'가 'vs_name_map'에 있으면, 해당 이름을 'metric_entity_name'으로 추가합니다.
+                item['metric_entity_name'] = vs_name_map.get(metric_entity_uuid, 'name')
+
+        return jsonify(performance_data)
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+# VirtualService 개별 성능을 조회하는 새로운 API 엔드포인트
+@app.route('/api/performance/<string:vs_uuid>')
+@login_required
+def get_vs_performance_data(vs_uuid):
+    token = session.get('avi_api_token')
+    apisessionid = session.get('avi_api_sessionid')
+    headers = {
+        "X-Avi-Version": API_VERSION,
+        "X-CSRFToken": token
+    }
+
+    # 특정 VirtualService의 성능 지표를 가져오는 엔드포인트
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth&entity_uuid={vs_uuid}&limit=10"
+
+    try:
+        # Get VirtualService list to map UUIDs to names
+        vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
+        vs_response = requests.get(vs_list_url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        vs_response.raise_for_status()
+        vs_data = vs_response.json()
+
+        vs_name_map = {vs['uuid']: vs['name'] for vs in vs_data.get('results', [])}
+
+        response = requests.get(url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        response.raise_for_status()
+        performance_data = response.json()
+
+        # Modify the response to include the VirtualService name
+        if performance_data.get('results'):
+            for item in performance_data['results']:
+                metric_entity_uuid = item.get('entity_uuid')
+                item['metric_entity_name'] = vs_name_map.get(metric_entity_uuid, 'name')
+
+        return jsonify(performance_data)
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+if __name__ == '__main__':
+    # Flask app run
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
