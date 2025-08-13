@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-stress-test-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cpu-stress-test
+  template:
+    metadata:
+      labels:
+        app: cpu-stress-test
+    spec:
+      containers:
+      - name: cpu-stress-test-container
+        image: harbor.tanzu.lab/library/cpu-stress-test-server:latest  # 이전에 빌드한 Docker 이미지 이름을 사용합니다.
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "1"  # 컨테이너가 사용할 수 있는 CPU 리소스 제한 (1코어)
+          requests:
+            cpu: "0.5" # 컨테이너가 최소한 요청하는 CPU 리소스 (0.5코어)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cpu-stress-test-service
+spec:
+  type: NodePort
+  selector:
+    app: cpu-stress-test
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30080 # 외부에서 접근할 포트를 30080으로 지정합니다. (30000-32767 범위)

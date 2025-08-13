@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time CPU Usage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        #gauge-container {
+            width: 200px;
+            margin: 20px auto;
+        }
+        meter {
+            width: 100%;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-time CPU Usage</h1>
+    <p>This container is currently running a CPU stress test.</p>
+    <hr>
+    <h3>CPU Usage</h3>
+    <div id="gauge-container">
+        <meter id="cpu-meter" min="0" max="100" value="0"></meter>
+        <p><span id="cpu-usage">0</span>%</p>
+    </div>
+    <hr>
+    <p><strong>접속 IP 주소:</strong> {{ ip_address }}</p>
+    <p><strong>서버 호스트 이름:</strong> {{ server_hostname }}</p>
+    <hr>
+    <h1>VMware by Broadcom</h1>
+    <script>
+        function updateCpuGauge() {
+            fetch('/api/cpu')
+                .then(response => response.json())
+                .then(data => {
+                    const cpuUsage = data.cpu_percent;
+                    document.getElementById('cpu-meter').value = cpuUsage;
+                    document.getElementById('cpu-usage').innerText = cpuUsage.toFixed(1);
+                })
+                .catch(error => console.error('Error fetching CPU usage:', error));
+        }
+
+        // 3초마다 게이지 업데이트
+        setInterval(updateCpuGauge, 3000);
+    </script>
+</body>
+</html>

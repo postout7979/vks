@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avi-monitor-deployment
+  labels:
+    app: avi-monitor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: avi-monitor
+  template:
+    metadata:
+      labels:
+        app: avi-monitor
+    spec:
+      containers:
+      - name: avi-monitor-container
+        image: harbor.tanzu.lab/library/avi-monitor:latest
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: avi-config
+

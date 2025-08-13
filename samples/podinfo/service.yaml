@@ -3,7 +3,9 @@ kind: Service
 metadata:
   name: podinfo
 spec:
-  type: ClusterIP
+  #  type: ClusterIP
+  type: LoadBalancer
+  loadBalancerClass: ako.vmware.com/avi-lb
   selector:
     app: podinfo
   ports:

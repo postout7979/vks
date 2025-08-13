@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: avi-config
+data:
+  AVI_CONTROLLER_IP: "vks-avi.tanzu.lab"
+

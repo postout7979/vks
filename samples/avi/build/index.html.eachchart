@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avi LB 성능 모니터링</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .chart-card {
+        min-height: 400px;
+      }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Avi LB 성능 모니터링</h1>
+        <a href="{{ url_for('logout') }}" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">로그아웃</a>
+    </div>
+
+    <div id="chart-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- VirtualService 차트들이 동적으로 여기에 생성됩니다. -->
+        <p id="loading-message" class="text-center text-gray-500 text-lg">데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let charts = {}; // 차트 인스턴스를 저장할 객체
+
+            // API에서 모든 성능 데이터를 가져와 차트를 생성/업데이트하는 메인 함수
+            async function initializeDashboard() {
+                try {
+                    // window.location.origin을 사용하여 절대 URL로 변경
+                    const apiUrl = window.location.origin + '/api/performance';
+                    const response = await fetch(apiUrl);
+                    
+                    if (response.status === 401) {
+                        window.location.href = "{{ url_for('login') }}";
+                        return;
+                    }
+
+                    const data = await response.json();
+                    
+                    const loadingMessage = document.getElementById('loading-message');
+                    if (loadingMessage) {
+                        loadingMessage.style.display = 'none';
+                    }
+                    
+                    if (data && data.results && data.results.length > 0) {
+                        const chartList = document.getElementById('chart-list');
+                        
+                        // 새로운 데이터에 포함된 UUID 목록을 만듭니다.
+                        const newUuids = data.results.map(vsData => vsData.entity_uuid);
+                        
+                        // 기존 차트 중 새로운 데이터에 없는 차트는 제거합니다.
+                        Object.keys(charts).forEach(uuid => {
+                            if (!newUuids.includes(uuid)) {
+                                charts[uuid].destroy();
+                                delete charts[uuid];
+                                const chartCard = document.getElementById(`card-${uuid}`);
+                                if (chartCard) {
+                                    chartCard.remove();
+                                }
+                            }
+                        });
+
+                        data.results.forEach(vsData => {
+                            const uuid = vsData.entity_uuid;
+                            // vsData.name을 사용하여 VirtualService 이름 가져오기
+                            const name = vsData.name;
+                            
+                            if (vsData.series && vsData.series.length > 0) {
+                                const bandwidthData = vsData.series[0].data;
+                                const labels = bandwidthData.map(d => new Date(d.timestamp).toLocaleTimeString());
+                                const values = bandwidthData.map(d => d.value);
+
+                                // updateOrCreateChart 함수가 이제 기존 차트를 업데이트하거나 새로 생성합니다.
+                                updateOrCreateChart(uuid, name, labels, values);
+                            } else {
+                                console.warn(`No series data for VirtualService: ${uuid}`);
+                            }
+                        });
+
+                    } else {
+                        document.getElementById('chart-list').innerHTML = 
+                            '<p class="text-center text-gray-500 text-lg">데이터가 없습니다.</p>';
+                    }
+
+                } catch (error) {
+                    console.error('Error initializing dashboard:', error);
+                    document.getElementById('chart-list').innerHTML = 
+                        '<p class="text-center text-red-500 text-lg">대시보드 초기화 중 오류가 발생했습니다.</p>';
+                }
+            }
+
+            // 차트를 업데이트하거나 새로 생성하는 함수
+            function updateOrCreateChart(uuid, name, labels, values) {
+                const chartList = document.getElementById('chart-list');
+                let chartCard = document.getElementById(`card-${uuid}`);
+                let chartInstance = charts[uuid];
+
+                if (!chartCard) {
+                    // 차트 카드가 없으면 새로 생성
+                    chartCard = document.createElement('div');
+                    chartCard.id = `card-${uuid}`;
+                    chartCard.className = 'bg-white p-6 rounded-lg shadow-lg chart-card';
+                    // 제목에 name 변수 사용
+                    chartCard.innerHTML = `
+                        <h2 class="text-xl font-semibold mb-4 text-gray-700">${name} - L4 Throughput</h2>
+                        <canvas id="chart-${uuid}"></canvas>
+                    `;
+                    chartList.appendChild(chartCard);
+                }
+
+                if (chartInstance) {
+                    // 기존 차트가 있으면 데이터만 업데이트
+                    chartInstance.data.labels = labels;
+                    chartInstance.data.datasets[0].data = values;
+                    chartInstance.update();
+                } else {
+                    // 차트가 없으면 새로 생성
+                    const ctx = document.getElementById(`chart-${uuid}`).getContext('2d');
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'L4 클라이언트 대역폭 (bps)',
+                                data: values,
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: '시간'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: '대역폭 (bps)'
+                                    },
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    charts[uuid] = chartInstance;
+                }
+            }
+
+            // 대시보드 초기화
+            initializeDashboard();
+
+            // 5초마다 데이터 업데이트
+            setInterval(initializeDashboard, 5000);
+        });
+    </script>
+</body>
+</html>
+

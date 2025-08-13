@@ -1,0 +1,125 @@
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import os,requests
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
+
+# InsecureRequestWarning 경고를 무시하도록 설정
+warnings.simplefilter('ignore', InsecureRequestWarning)
+
+
+app = Flask(__name__)
+# Flask 세션 관리를 위한 비밀 키 설정. 실제 운영 환경에서는 더 안전한 키를 사용해야 합니다.
+app.secret_key = os.urandom(24)
+
+# Avi Controller 정보
+AVI_CONTROLLER_IP = os.environ.get("AVI_CONTROLLER_IP")
+# 인증에 필요한 API 버전.
+API_VERSION = "30.1.1"
+
+@app.route('/')
+def index():
+    # 세션에 'avi_api_token'이 없으면 로그인 페이지로 리디렉션
+    if 'avi_api_sessionid' not in session:
+        return redirect(url_for('login'))
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        # Avi Controller에 로그인 요청을 보낼 URL
+        login_url = f"https://{AVI_CONTROLLER_IP}/login"
+        
+        # 인증에 필요한 헤더와 데이터
+        headers = {
+            "Content-Type": "application/json",
+            "X-Avi-Version": API_VERSION
+        }
+        data = {
+            "username": username,
+            "password": password
+        }
+
+        try:
+            # SSL 인증서 검증을 건너뛰고 로그인 요청
+            response = requests.post(login_url, json=data, headers=headers, verify=False)
+            response.raise_for_status()
+            
+            # 응답에서 세션 ID (API 토큰) 추출
+            session_id = response.cookies.get('sessionid')
+            session_token = response.cookies.get('csrftoken')
+            session_cookies = response.cookies
+
+            if session_id:
+                # 세션에 API 토큰 저장
+                session['avi_api_sessionid'] = session_id
+                session['avi_api_token'] = session_token
+                session['session_cookies'] = dict(session_cookies)
+                return redirect(url_for('index'))
+            else:
+                return "로그인 실패: 토큰을 가져올 수 없습니다.", 401
+        
+        except requests.exceptions.RequestException as e:
+            # 요청 중 발생한 에러 처리
+            return f"로그인 에러: {str(e)}", 500
+
+    # GET 요청 시 로그인 페이지 렌더링
+    return render_template('login.html')
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    token = session.get('avi_api_token')
+    session_cookies = session.get('session_cookies')
+    headers = {
+        "X-CSRFToken": token, # CSRF 토큰으로 세션 ID 사용
+        "Referer": f"https://{AVI_CONTROLLER_IP}"
+    }
+
+    # Avi Controller에 로그인 요청을 보낼 URL
+    logout_url = f"https://{AVI_CONTROLLER_IP}/logout"
+
+    try:
+        response = requests.post(logout_url, headers=headers, cookies=session_cookies, verify=False)
+        response.raise_for_status()
+
+    except requests.exceptions.RequestException as e:
+        # 요청 중 발생한 에러 처리
+        return f"logout error: {str(e)}", 500
+
+    # 세션에서 API 토큰 삭제
+    session.pop('avi_api_token', None)
+    session.pop('avi_api_sessionid', None)
+    return redirect(url_for('login'))
+
+@app.route('/api/performance')
+def get_performance_data():
+    # 로그인 상태 확인
+    if 'avi_api_sessionid' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # 세션에서 API 토큰을 가져와 헤더에 포함
+    token = session.get('avi_api_token')
+    apisessionid = session.get('avi_api_sessionid')
+    headers = {
+        "X-Avi-Version": API_VERSION,
+        "X-CSRFToken": token # CSRF 토큰으로 세션 ID 사용
+    }
+    
+    # Avi API 성능 지표 엔드포인트
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth&limit=10"
+
+    try:
+        response = requests.get(url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        response.raise_for_status()
+        performance_data = response.json()
+        return jsonify(performance_data)
+        
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    # Flask app run
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
