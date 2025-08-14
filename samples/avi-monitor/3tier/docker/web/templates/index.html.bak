@@ -68,14 +68,6 @@
         .chart-popup-container {
             width: 100%;
         }
-        /* AI Insight 박스 스타일링 */
-        #ai-insight-box {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
@@ -157,10 +149,9 @@
                 </div>
 
                 <!-- 모든 VirtualService의 성능을 한 차트에 표시할 컨테이너입니다. -->
-                <div class="bg-white p-6 rounded-lg shadow-lg w-full mb-6">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full">
                     <h2 class="text-xl font-semibold mb-4 text-gray-700">VirtualService L4 클라이언트 대역폭</h2>
-                    <!-- 고정된 높이 클래스(h-80)를 적용하여 차트 크기를 설정합니다. -->
-                    <div class="chart-container mx-auto min-h-[60vh] h-fit w-full">
+                    <div class="chart-container mx-auto h-[50vh] w-full">
                         <canvas id="totalPerformanceChart"></canvas>
                     </div>
                     <p id="total-loading-message" class="text-center text-gray-500 text-lg">데이터를 불러오는 중입니다...</p>
@@ -338,7 +329,7 @@
                 }
                 const poolCount = await pool_response.json();
                 
-                document.getElementById('vsCount').textContent = poolCount;
+                document.getElementById('vsCount').textContent = vsCount;
                 document.getElementById('poolCount').textContent = poolCount;
                 
                 loadingText.classList.add('hidden');
@@ -563,7 +554,7 @@
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${vs.metric_entity_name}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${vs.entity_uuid}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(bandwidth / 1024).toFixed(2)} Kbps</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(bandwidth / 1024 / 1024).toFixed(2)} MBps</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${connections}</td>
                 `;
                 
@@ -721,6 +712,7 @@
             const totalKbps = (totalBps / 1000).toFixed(2);
             document.getElementById('total-bandwidth-display').textContent = `${totalKbps} kbps`;
         }
+
 
         // --- 이벤트 리스너 ---
         document.addEventListener('DOMContentLoaded', checkLoginStatus);

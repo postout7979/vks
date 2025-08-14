@@ -1,0 +1,20 @@
+# app-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: avi-web
+spec:
+  # The NodePort type exposes the service on each Node's IP at a static port.
+  type: LoadBalancer
+  selector:
+    # This selector links the service to the pods created by the deployment.
+    app: avi-app-web
+  ports:
+  - protocol: TCP
+    # The internal port of the service.
+    port: 80
+    # The port the container is listening on.
+    targetPort: 80
+    # The port on the host node that forwards to the service.
+    # nodePort: 30007
+

@@ -1,0 +1,36 @@
+# app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avi-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: avi-app-ap
+  template:
+    metadata:
+      labels:
+        app: avi-app-ap
+    spec:
+      containers:
+      - name: avi-ap
+        # The image must be built and available in your local Docker registry.
+        image: harbor.tanzu.lab/library/avi-app-ap:latest
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: avi-controller-config
+        env:
+        - name: AVI_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: avi-controller-secret
+              key: AVI_USERNAME
+        - name: AVI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: avi-controller-secret
+              key: AVI_PASSWORD
+

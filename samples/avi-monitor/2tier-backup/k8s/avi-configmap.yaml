@@ -1,0 +1,10 @@
+# avi-controller-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: avi-controller-config
+data:
+  # This section stores non-sensitive configuration data as key-value pairs.
+  # The values below are example values and should be replaced with your actual configuration.
+  AVI_CONTROLLER_IP: "vks-avi.tanzu.lab"
+
