@@ -66,12 +66,7 @@
         }
         /* vslist 모달 팝업의 차트 캔버스 크기 조정 */
         .chart-popup-container {
-            height: 64vh;
-        }
-        @media (min-width: 768px) {
-            .chart-popup-container {
-                height: 96vh;
-            }
+            width: 100%;
         }
     </style>
 </head>
@@ -106,12 +101,21 @@
         <main class="container mx-auto p-8 flex-grow flex flex-col">
             <!-- 기본 홈 화면 -->
             <div id="section-home" class="bg-white p-6 rounded-lg shadow-lg flex-grow">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">대시보드 메인 페이지입니다.</h2>
-                <p class="text-gray-600">
-                    상단 메뉴를 이용하여 필요한 페이지로 이동할 수 있습니다.
-                    <br>
-                    Virtual Service List 메뉴를 클릭하여 Virtual Service 목록을 확인하세요.
-                </p>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">대시보드</h2>
+                <!-- Virtual Service 및 Pool Server 수량 표시 박스 -->
+                <div id="dashboard-stats" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Virtual Service 박스 -->
+                    <div class="bg-blue-500 text-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center transition-transform transform hover:scale-105">
+                        <span class="text-xl font-semibold">Virtual Service 수량</span>
+                        <span id="vsCount" class="text-5xl font-bold mt-2">0</span>
+                    </div>
+                    <!-- Pool Server 박스 -->
+                    <div class="bg-green-500 text-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center transition-transform transform hover:scale-105">
+                        <span class="text-xl font-semibold">Pool Server 수량</span>
+                        <span id="poolCount" class="text-5xl font-bold mt-2">0</span>
+                    </div>
+                </div>
+                <div id="home-loading" class="text-center text-gray-500 text-lg">데이터를 불러오는 중입니다...</div>
             </div>
 
             <!-- Virtual Service List 콘텐츠 -->
@@ -185,7 +189,8 @@
                     <label for="popupConnectionsRadio" class="text-gray-700">연결 수</label>
                 </div>
             </div>
-            <div class="chart-popup-container">
+            <!-- 차트 컨테이너의 크기를 16:9 비율로 조정합니다. -->
+            <div class="chart-popup-container aspect-video">
                  <canvas id="popupPerformanceChart"></canvas>
             </div>
         </div>
@@ -285,6 +290,9 @@
                     fetchVsDataAndRender();
                 } else if (sectionId === 'total-monitoring') {
                     startTotalDashboardRefresh();
+                } else if (sectionId === 'home') {
+                    // HOME 섹션이 활성화될 때 대시보드 통계 데이터를 가져옵니다.
+                    fetchDashboardCounts();
                 }
             }
             
@@ -294,6 +302,42 @@
             const activeMenuItem = document.getElementById(`menu-${sectionId}`);
             if (activeMenuItem) {
                 activeMenuItem.classList.add('active');
+            }
+        }
+        
+        /**
+         * @description HOME 페이지에 표시할 VS 및 Pool Server의 총 개수를 가져오는 함수.
+         */
+        async function fetchDashboardCounts() {
+            const loadingText = document.getElementById('home-loading');
+            const statsContainer = document.getElementById('dashboard-stats');
+            
+            loadingText.classList.remove('hidden');
+            statsContainer.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/performance');
+                if (!response.ok) {
+                    throw new Error('API 응답 실패');
+                }
+                const data = await response.json();
+                const vsCount = data.results.length;
+
+		const pool_response = await fetch('/api/pool');
+                if (!pool_response.ok) {
+                    throw new Error('API 응답 실패');
+                }
+                const poolCount = await pool_response.json();
+                
+                document.getElementById('vsCount').textContent = vsCount;
+                document.getElementById('poolCount').textContent = poolCount;
+                
+                loadingText.classList.add('hidden');
+                statsContainer.classList.remove('hidden');
+            } catch (error) {
+                console.error('대시보드 데이터를 불러오는 중 오류 발생:', error);
+                loadingText.textContent = '데이터를 불러오지 못했습니다.';
+                statsContainer.classList.add('hidden');
             }
         }
 
@@ -387,7 +431,9 @@
                         borderColor: metricType === 'bandwidth' ? '#3b82f6' : '#ef4444',
                         backgroundColor: metricType === 'bandwidth' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)',
                         borderWidth: 2,
-                        pointRadius: 0,
+                        // 포인트를 표시하고 호버 시 크기를 키웁니다.
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
                         tension: 0.4,
                         fill: true,
                     }]
@@ -408,7 +454,8 @@
                             x: {
                                 type: 'time',
                                 time: {
-                                    unit: 'minute',
+                                    // 시간 단위를 분에서 초로 변경
+                                    unit: 'second',
                                     tooltipFormat: 'HH:mm:ss'
                                 },
                                 title: {
@@ -427,6 +474,28 @@
                         plugins: {
                             legend: {
                                 display: true
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            if (metricType === 'bandwidth') {
+                                                // 대역폭을 kbps 단위로 표시하고 반올림합니다.
+                                                const valueKbps = (context.parsed.y / 1000).toFixed(2);
+                                                label += new Intl.NumberFormat('ko-KR').format(valueKbps) + ' kbps';
+                                            } else {
+                                                label += new Intl.NumberFormat('ko-KR').format(context.parsed.y) + ' connections';
+                                            }
+                                        }
+                                        return label;
+                                    }
+                                }
                             }
                         }
                     }

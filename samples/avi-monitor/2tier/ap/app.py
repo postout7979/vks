@@ -187,6 +187,37 @@ def get_performance_data():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/pool')
+@login_required
+def get_pool_data():
+    token = session.get('avi_api_token')
+    apisessionid = session.get('avi_api_sessionid')
+    headers = {
+        "X-Avi-Version": API_VERSION,
+        "X-CSRFToken": token
+    }
+
+    url = f"https://{AVI_CONTROLLER_IP}/api/pool"
+
+    try:
+        response = requests.get(url, headers=headers, cookies=dict(sessionid=apisessionid), verify=False)
+        response.raise_for_status()
+        data = response.json()
+
+        # 'count' 필드가 있는지 확인하고 값을 반환합니다.
+        if "count" in data:
+            count_data = data["count"]
+            return jsonify(count_data)
+        else:
+            print("응답에 'count' 필드가 없습니다.")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+    except json.JSONDecodeError:
+        print("JSON 응답을 파싱하는 데 실패했습니다.")
+        return None
+
 @app.route('/api/performance/<string:vs_uuid>')
 @login_required
 def get_vs_performance_data(vs_uuid):
