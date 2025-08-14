@@ -8,6 +8,9 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/
 COPY templates /app/templates
 
+# 복사된 파일 및 디렉터리의 소유권을 nginx 사용자로 변경하여 권한 문제 해결
+RUN chown -R nginx:nginx /app/templates
+
 # 컨테이너의 80 포트를 외부에 노출
 EXPOSE 80
 

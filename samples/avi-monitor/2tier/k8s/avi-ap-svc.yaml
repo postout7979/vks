@@ -1,0 +1,18 @@
+# app-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: avi-ap
+spec:
+  # The NodePort type exposes the service on each Node's IP at a static port.
+  type: ClusterIP
+  selector:
+    # This selector links the service to the pods created by the deployment.
+    app: avi-app-ap
+  ports:
+  - protocol: TCP
+    # The internal port of the service.
+    port: 5000
+    # The port the container is listening on.
+    targetPort: 5000
+

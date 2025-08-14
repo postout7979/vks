@@ -240,12 +240,12 @@
                     mainContent.style.display = 'flex';
                     showSection('home'); // 초기 화면으로 HOME을 표시합니다.
                 } else {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login';
                 }
             } catch (error) {
                 console.error('Error checking login status:', error);
                 // 네트워크 오류 시에도 로그인 페이지로 리디렉션하여 재시도를 유도합니다.
-                window.location.href = '/login.html';
+                window.location.href = '/login';
             }
         }
 
@@ -256,7 +256,7 @@
             try {
                 const response = await fetch('/api/logout', { method: 'POST' });
                 if (response.ok) {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login';
                 } else {
                     const error = await response.json();
                     console.error('Logout failed:', error.error);
@@ -598,7 +598,7 @@
                 const response = await fetch(apiUrl);
 
                 if (response.status === 401) {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login';
                     return;
                 }
 
