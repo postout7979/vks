@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avi LB 성능 모니터링</title>
+    <!-- Tailwind CSS를 사용하여 스타일링합니다. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js를 사용하여 차트를 그립니다. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .chart-card {
+        min-height: 400px;
+        /* 차트 카드의 높이를 동적으로 조정합니다. */
+        height: calc(50vh - 150px);
+      }
+      /* 모달 배경 스타일 */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s, opacity 0.3s;
+      }
+      .modal-overlay.active {
+        visibility: visible;
+        opacity: 1;
+      }
+      .modal-content {
+        background-color: white;
+        padding: 24px;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+        transform: scale(0.95);
+        transition: transform 0.3s ease-out;
+      }
+      .modal-overlay.active .modal-content {
+        transform: scale(1);
+      }
+      /* 테이블 셀의 패딩과 정렬을 조정합니다. */
+      th, td {
+        padding: 12px 16px;
+        text-align: left;
+      }
+      /* 로그인 확인 중 콘텐츠를 숨기기 위한 스타일 */
+      #main-content {
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <!-- 로그인 확인 중에는 이 내용을 숨깁니다. -->
+    <div id="main-content">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Avi LB 성능 모니터링</h1>
+            <div class="flex space-x-4">
+                <!-- 대시보드 버튼 추가 -->
+                <a href="/dashboard.html" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">대시보드</a>
+                <!-- 로그아웃 버튼 -->
+                <a id="logout-button" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 cursor-pointer">로그아웃</a>
+            </div>
+        </div>
+
+        <!-- VirtualService 목록 테이블 -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-6 overflow-x-auto">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">VirtualService 목록</h2>
+            <table class="w-full table-auto border-collapse">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <th class="py-3 px-6 text-left">VirtualService 이름</th>
+                        <th class="py-3 px-6 text-left">UUID</th>
+                        <th class="py-3 px-6 text-left">최신 대역폭</th>
+                        <th class="py-3 px-6 text-left">최신 연결 수</th>
+                    </tr>
+                </thead>
+                <tbody id="vs-table-body" class="text-gray-600 text-sm font-light">
+                    <tr class="border-b border-gray-200">
+                        <td colspan="4" class="py-3 px-6 text-center text-gray-500 text-lg">
+                            VirtualService 목록을 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 팝업 차트 모달 -->
+        <div id="vs-performance-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modal-title" class="text-2xl font-bold text-gray-800"></h3>
+                    <button id="modal-close-button" class="text-gray-500 hover:text-gray-800 text-xl font-bold">&times;</button>
+                </div>
+                <div class="relative w-[80vw] h-[80vh] flex items-center justify-center">
+                    <p id="modal-loading-message" class="text-gray-500">데이터를 불러오는 중입니다...</p>
+                    <canvas id="vs-performance-chart" class="hidden"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드 시 로그인 상태를 확인하고, 로그인 상태가 아닐 경우 리디렉션하는 함수
+        async function checkLoginStatus() {
+            try {
+                // Flask 서버의 API 엔드포인트를 호출하여 로그인 상태를 확인
+                const response = await fetch('/api/check_login_status');
+                const data = await response.json();
+                const mainContent = document.getElementById('main-content');
+                
+                if (data.is_logged_in) {
+                    // 로그인 상태일 경우, 숨겨두었던 메인 콘텐츠를 보여주고 데이터를 불러옵니다.
+                    mainContent.style.display = 'block';
+                    fetchVsData(); // 로그인 성공 시에만 데이터 로드 시작
+                    setInterval(fetchVsData, 5000); // 5초마다 데이터 갱신
+                } else {
+                    // 로그인 상태가 아닐 경우 로그인 페이지로 리디렉션
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('Error checking login status:', error);
+                // 네트워크 오류 등으로 API 호출에 실패할 경우, 안전을 위해 로그인 페이지로 리디렉션
+                window.location.href = '/login.html';
+            }
+        }
+
+        // DOMContentLoaded 이벤트가 발생한 후에 함수를 실행하여,
+        // 페이지 로딩 중 발생할 수 있는 오류를 방지합니다.
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+
+        let vsChartInstance = null;
+
+        async function fetchVsData() {
+            try {
+                const response = await fetch('/api/performance');
+                if (response.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                const vsData = await response.json();
+                const vsTableBody = document.getElementById('vs-table-body');
+                vsTableBody.innerHTML = '';
+
+                if (vsData && vsData.results && vsData.results.length > 0) {
+                    vsData.results.forEach(vs => {
+                        const vsName = vs.metric_entity_name;
+                        const vsUuid = vs.entity_uuid;
+                        const bandwidthSeries = vs.series.find(s => s.header.name === 'l4_client.avg_bandwidth');
+                        const connectionsSeries = vs.series.find(s => s.header.name === 'l4_server.avg_open_conns');
+
+                        let latestBandwidth = 'N/A';
+                        if (bandwidthSeries && bandwidthSeries.data && bandwidthSeries.data.length > 0) {
+                            latestBandwidth = (bandwidthSeries.data[bandwidthSeries.data.length - 1].value / 1000).toFixed(2) + ' kbps';
+                        }
+
+                        let latestConnections = 'N/A';
+                        if (connectionsSeries && connectionsSeries.data && connectionsSeries.data.length > 0) {
+                            latestConnections = connectionsSeries.data[connectionsSeries.data.length - 1].value + ' 개';
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-gray-200 hover:bg-gray-100 cursor-pointer transition duration-150 ease-in-out';
+                        tr.innerHTML = `
+                            <td class="py-3 px-6 whitespace-nowrap">${vsName}</td>
+                            <td class="py-3 px-6 whitespace-nowrap">${vsUuid}</td>
+                            <td class="py-3 px-6 whitespace-nowrap">${latestBandwidth}</td>
+                            <td class="py-3 px-6 whitespace-nowrap">${latestConnections}</td>
+                        `;
+                        tr.addEventListener('click', () => showVsPerformance(vsName, vsUuid));
+                        vsTableBody.appendChild(tr);
+                    });
+                } else {
+                    vsTableBody.innerHTML = `
+                        <tr class="border-b border-gray-200">
+                            <td colspan="4" class="py-3 px-6 text-center text-gray-500 text-lg">
+                                VirtualService 목록이 없습니다.
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to fetch VS data:', error);
+                const vsTableBody = document.getElementById('vs-table-body');
+                vsTableBody.innerHTML = `
+                    <tr class="border-b border-gray-200">
+                        <td colspan="4" class="py-3 px-6 text-center text-red-500 text-lg">
+                            VirtualService 목록을 불러오는 중 오류가 발생했습니다.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function showVsPerformance(name, uuid) {
+            const modalOverlay = document.getElementById('vs-performance-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalLoadingMessage = document.getElementById('modal-loading-message');
+            const vsPerformanceChartCanvas = document.getElementById('vs-performance-chart');
+
+            modalOverlay.classList.add('active');
+            modalTitle.textContent = `${name} 성능 차트`;
+            modalLoadingMessage.classList.remove('hidden');
+            vsPerformanceChartCanvas.classList.add('hidden');
+
+            if (vsChartInstance) {
+                vsChartInstance.destroy();
+            }
+
+            try {
+                const response = await fetch(`/api/performance/${uuid}`);
+                if (response.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const data = await response.json();
+
+                modalLoadingMessage.classList.add('hidden');
+                vsPerformanceChartCanvas.classList.remove('hidden');
+
+                if (data && data.results && data.results.length > 0) {
+                    const vsData = data.results[0];
+                    const bandwidthData = vsData.series.find(s => s.header.name === 'l4_client.avg_bandwidth')?.data || [];
+                    const labels = bandwidthData.map(d => new Date(d.timestamp).toLocaleTimeString());
+                    const values = bandwidthData.map(d => (d.value / 1000).toFixed(2));
+
+                    const chartData = {
+                        labels: labels,
+                        datasets: [{
+                            label: '대역폭 (kbps)',
+                            data: values,
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1,
+                            fill: false
+                        }]
+                    };
+
+                    const ctx = vsPerformanceChartCanvas.getContext('2d');
+                    vsChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: '시간'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: '대역폭 (kbps)'
+                                    },
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    vsPerformanceChartCanvas.classList.add('hidden');
+                    modalLoadingMessage.textContent = '해당 가상 서비스의 데이터가 없습니다.';
+                    modalLoadingMessage.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch VS performance:', error);
+                vsPerformanceChartCanvas.classList.add('hidden');
+                modalLoadingMessage.textContent = '데이터를 불러오는 중 오류가 발생했습니다.';
+                modalLoadingMessage.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('modal-close-button').addEventListener('click', () => {
+            document.getElementById('vs-performance-modal').classList.remove('active');
+        });
+
+        document.getElementById('vs-performance-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'vs-performance-modal') {
+                document.getElementById('vs-performance-modal').classList.remove('active');
+            }
+        });
+
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            const logoutUrl = '/api/logout';
+
+            try {
+                const response = await fetch(logoutUrl, {
+                    method: 'POST',
+                    headers: {
+                    },
+                });
+                if (response.ok) {
+                    console.log('로그아웃 성공! 로그인 페이지로 이동합니다.');
+                    window.location.href = '/login.html';
+                } else {
+                    const errorText = await response.text();
+                    console.error('로그아웃 실패:', response.status, errorText);
+                    showAlert(`로그아웃에 실패했습니다. (상태 코드: ${response.status})`);
+                }
+            } catch (error) {
+                console.error('로그아웃 중 네트워크 오류 발생:', error);
+                showAlert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+            }
+        });
+        
+    </script>
+</body>
+</html>
+
