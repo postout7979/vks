@@ -98,6 +98,8 @@
                             <li><a href="#" id="menu-vslist" class="nav-item">Virtual Service List</a></li>
                             <li><a href="#" id="menu-total-monitoring" class="nav-item">Total VS Monitoring</a></li>
                             <li><a href="#" id="menu-event" class="nav-item">Event</a></li>
+                            <!-- 시간 조회 버튼 추가 -->
+                            <li><a href="/chart" id="menu-chart" class="nav-item">시간조회</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -175,7 +177,7 @@
         </main>
 
         <footer class="bg-gray-200 text-gray-600 p-4 text-center mt-auto">
-            <p>&copy; 2024 Avi LB 성능 모니터링</p>
+            <p>&copy; 2025 TKG SME Group in KOREA. </p>
         </footer>
     </div>
     
@@ -432,7 +434,7 @@
                 const data = await response.json();
                 const vsData = data.results[0];
                 
-                const metricName = metricType === 'bandwidth' ? 'l4_client.avg_bandwidth' : 'l4_server.avg_open_conns';
+                const metricName = metricType === 'bandwidth' ? 'l4_client.avg_bandwidth' : 'l4_client.max_open_conns';
                 const series = vsData.series.find(s => s.header.name === metricName);
 
                 const chartData = {
@@ -564,7 +566,7 @@
                 const bandwidthData = vs.series.find(s => s.header.name === 'l4_client.avg_bandwidth')?.data;
                 const bandwidth = bandwidthData?.length > 0 ? bandwidthData[bandwidthData.length - 1].value : 0;
                 
-                const connectionsData = vs.series.find(s => s.header.name === 'l4_server.avg_open_conns')?.data;
+                const connectionsData = vs.series.find(s => s.header.name === 'l4_client.max_open_conns')?.data;
                 const connections = connectionsData?.length > 0 ? connectionsData[connectionsData.length - 1].value : 0;
                 
                 const row = document.createElement('tr');
@@ -754,6 +756,13 @@
             e.preventDefault();
             showSection('event');
         });
+        // '시간조회' 메뉴 항목 클릭 이벤트 추가
+        document.getElementById('menu-chart').addEventListener('click', (e) => {
+            // 기본 동작(페이지 이동)을 방지하지 않습니다.
+            // e.preventDefault();
+            // showSection('chart'); // chart.html로 이동하기 때문에 showSection을 사용하지 않습니다.
+        });
+
 
         // 팝업 닫기 버튼 클릭 또는 오버레이 클릭 시 팝업 닫기
         closePopupBtn.addEventListener('click', closeChartPopup);

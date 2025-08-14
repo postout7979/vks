@@ -68,6 +68,14 @@
         .chart-popup-container {
             width: 100%;
         }
+        /* AI Insight 박스 스타일링 */
+        #ai-insight-box {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
@@ -149,9 +157,10 @@
                 </div>
 
                 <!-- 모든 VirtualService의 성능을 한 차트에 표시할 컨테이너입니다. -->
-                <div class="bg-white p-6 rounded-lg shadow-lg w-full">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-gray-700">VirtualService L4 클라이언트 대역폭</h2>
-                    <div class="chart-container mx-auto h-[50vh] w-full">
+                    <!-- 고정된 높이 클래스(h-80)를 적용하여 차트 크기를 설정합니다. -->
+                    <div class="chart-container mx-auto min-h-[60vh] h-fit w-full">
                         <canvas id="totalPerformanceChart"></canvas>
                     </div>
                     <p id="total-loading-message" class="text-center text-gray-500 text-lg">데이터를 불러오는 중입니다...</p>
@@ -316,19 +325,22 @@
             statsContainer.classList.add('hidden');
             
             try {
-                const response = await fetch('/api/performance');
-                if (!response.ok) {
-                    throw new Error('API 응답 실패');
+                // VS 개수를 가져옵니다.
+                const vs_response = await fetch('/api/vs_list');
+                if (!vs_response.ok) {
+                    throw new Error('VS List API 응답 실패');
                 }
-                const data = await response.json();
-                const vsCount = data.results.length;
+                const vs_list_data = await vs_response.json();
+                const vsCount = vs_list_data.length;
 
-		const pool_response = await fetch('/api/pool');
+                // Pool 개수를 가져옵니다.
+                const pool_response = await fetch('/api/pool');
                 if (!pool_response.ok) {
-                    throw new Error('API 응답 실패');
+                    throw new Error('Pool API 응답 실패');
                 }
                 const poolCount = await pool_response.json();
                 
+                // DOM 요소에 올바른 값을 할당합니다.
                 document.getElementById('vsCount').textContent = vsCount;
                 document.getElementById('poolCount').textContent = poolCount;
                 
@@ -522,6 +534,7 @@
             tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">데이터를 불러오는 중...</td></tr>';
             
             try {
+                // app.py의 /api/performance 엔드포인트는 {"results": [...]} 형식으로 반환합니다.
                 const response = await fetch('/api/performance');
                 if (!response.ok) {
                     throw new Error('API 응답 실패');
@@ -542,6 +555,11 @@
             const tableBody = document.getElementById('vsTableBody');
             tableBody.innerHTML = '';
             
+            if (vsData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">데이터가 없습니다.</td></tr>';
+                return;
+            }
+
             vsData.forEach(vs => {
                 const bandwidthData = vs.series.find(s => s.header.name === 'l4_client.avg_bandwidth')?.data;
                 const bandwidth = bandwidthData?.length > 0 ? bandwidthData[bandwidthData.length - 1].value : 0;
@@ -554,7 +572,7 @@
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${vs.metric_entity_name}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${vs.entity_uuid}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(bandwidth / 1024 / 1024).toFixed(2)} MBps</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(bandwidth / 1024).toFixed(2)} Kbps</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${connections}</td>
                 `;
                 
@@ -712,7 +730,6 @@
             const totalKbps = (totalBps / 1000).toFixed(2);
             document.getElementById('total-bandwidth-display').textContent = `${totalKbps} kbps`;
         }
-
 
         // --- 이벤트 리스너 ---
         document.addEventListener('DOMContentLoaded', checkLoginStatus);
