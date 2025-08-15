@@ -25,7 +25,7 @@
                 <label for="password" class="block text-gray-700 font-semibold mb-2">비밀번호</label>
                 <input type="password" id="password" name="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
             </div>
-            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">로그인</button>
+            <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300">로그인</button>
             <div id="error-message" class="text-red-500 text-sm text-center mt-4 hidden"></div>
         </form>
     </div>
@@ -51,25 +51,15 @@
                 });
 
                 if (response.ok) {
-                    // 로그인 성공 시 메인 페이지로 리디렉션
                     window.location.href = '/';
                 } else {
-                    let errorMessage = '로그인에 실패했습니다.';
-                    // 서버 응답이 JSON인지 확인하고 파싱
-                    const contentType = response.headers.get('Content-Type');
-                    if (contentType && contentType.includes('application/json')) {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error || errorMessage;
-                    }
-                    
-                    // 오류 메시지 표시
-                    errorMessageElement.textContent = errorMessage;
+                    const errorData = await response.json();
+                    errorMessageElement.textContent = errorData.error || '로그인에 실패했습니다.';
                     errorMessageElement.classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Login Error:', error);
-                // 네트워크 연결 자체에 문제가 있을 때 표시되는 메시지
-                errorMessageElement.textContent = '네트워크 오류가 발생했습니다. 서버 연결을 확인해주세요.';
+                errorMessageElement.textContent = '네트워크 오류가 발생했습니다.';
                 errorMessageElement.classList.remove('hidden');
             }
         });
