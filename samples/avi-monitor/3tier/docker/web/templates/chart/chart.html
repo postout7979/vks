@@ -3,434 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avi Monitor 통합 차트</title>
+    <title>Avi LB 성능 차트 조회</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
+            background-color: #f3f4f6;
         }
-        .loading-overlay {
+        /* 팝업 모달 오버레이 */
+        #chartPopupModal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.8);
+            background-color: rgba(0, 0, 0, 0.75);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            padding: 1rem;
         }
-        .message-box {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 2000;
-            text-align: center;
+        #chartPopupModal.hidden {
+            display: none;
+        }
+        /* 팝업 콘텐츠 - 화면 크기에 맞게 조절되도록 수정 */
+        #chartPopupContent {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 960px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 팝업 차트 캔버스 */
+        #popupChartCanvas {
+            width: 100% !important;
+            height: auto !important;
+            flex-grow: 1;
+        }
+        /* 비활성화된 버튼 스타일 */
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
-
-    <!-- 로딩 오버레이 -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <i class="fas fa-spinner fa-spin fa-3x text-blue-500"></i>
-    </div>
-
-    <!-- 메시지 박스 -->
-    <div id="message-box" class="message-box hidden">
-        <p id="message-text" class="text-gray-700"></p>
-        <button onclick="hideMessageBox()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">확인</button>
-    </div>
-
-    <!-- 헤더 -->
-    <header class="bg-white shadow-md p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50">
-        <div class="flex items-center">
-            <a href="/" class="text-gray-500 hover:text-gray-700 mr-4">
-                <i class="fas fa-arrow-left"></i>
-            </a>
-            <h1 class="text-2xl font-bold text-gray-800">통합 성능 차트</h1>
-        </div>
-        <div class="flex items-center">
-            <span id="auth-status" class="text-sm font-medium text-gray-600 mr-4">로그인되지 않음</span>
-            <button id="logout-button" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors hidden">
-                로그아웃
+    <!-- 메인 콘텐츠 -->
+    <div id="main-content" class="flex-grow flex flex-col">
+        <!-- 뒤로가기 버튼 -->
+        <div class="container mx-auto p-8 pb-4">
+            <button id="backBtn" class="bg-gray-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-600 transition-colors flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>뒤로가기</span>
             </button>
         </div>
-    </header>
 
-    <!-- 메인 컨테이너 -->
-    <main class="flex-grow p-4 md:p-8 mt-20">
-        <!-- 시간 범위 선택 섹션 -->
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
-            <div class="flex items-center mb-4 justify-between">
-                <h2 class="text-2xl font-bold text-gray-800">모든 Virtual Service 통합 성능</h2>
-                <div class="flex items-center">
-                    <label for="time-range" class="text-gray-700 mr-2">시간 범위:</label>
-                    <select id="time-range" class="border rounded-md p-2">
-                        <option value="10">10분</option>
-                        <option value="30">30분</option>
-                        <option value="60">1시간</option>
-                        <option value="1440">1일</option>
-                    </select>
+        <!-- 차트 조회 메인 영역 -->
+        <main class="container mx-auto p-8 pt-0 flex-grow">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Virtual Service 성능 차트 조회</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label for="vsSelect" class="block text-sm font-medium text-gray-700">Virtual Service 선택</label>
+                        <select id="vsSelect" name="vsSelect" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="">Virtual Service를 선택하세요</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="startTime" class="block text-sm font-medium text-gray-700">시작 시간</label>
+                        <input type="datetime-local" id="startTime" name="startTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="endTime" class="block text-sm font-medium text-gray-700">종료 시간</label>
+                        <input type="datetime-local" id="endTime" name="endTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div class="flex items-end space-x-2">
+                        <button id="searchBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md w-full">차트 조회</button>
+                        <button id="resetBtn" class="bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-500 transition-colors shadow-md w-full">초기화</button>
+                    </div>
+                </div>
+
+                <div id="chartLoading" class="text-center text-gray-500 text-lg mb-4 hidden">데이터를 불러오는 중입니다...</div>
+                
+                <div id="chartGrid" class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[60vh] h-fit">
+                    <!-- Bandwidth Chart -->
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col relative">
+                        <h3 class="font-bold text-gray-700 mb-2">평균 대역폭 (bps)</h3>
+                        <div class="relative flex-grow min-h-[300px]">
+                            <canvas id="bandwidthChartCanvas"></canvas>
+                            <div id="bandwidthNoData" class="no-data-message absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-80 hidden">
+                                <span class="text-gray-500 text-lg">데이터 없음</span>
+                            </div>
+                        </div>
+                        <button id="bandwidthExpandBtn" class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors" disabled>
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </button>
+                    </div>
+                    <!-- Connections Chart -->
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col relative">
+                        <h3 class="font-bold text-gray-700 mb-2">평균 연결 수</h3>
+                        <div class="relative flex-grow min-h-[300px]">
+                            <canvas id="connectionsChartCanvas"></canvas>
+                            <div id="connectionsNoData" class="no-data-message absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-80 hidden">
+                                <span class="text-gray-500 text-lg">데이터 없음</span>
+                            </div>
+                        </div>
+                        <button id="connectionsExpandBtn" class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors" disabled>
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </button>
+                    </div>
+                    <!-- Total Bytes Chart -->
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col relative">
+                        <h3 class="font-bold text-gray-700 mb-2">전체 바이트 (Bytes)</h3>
+                        <div class="relative flex-grow min-h-[300px]">
+                            <canvas id="totalBytesChartCanvas"></canvas>
+                            <div id="totalBytesNoData" class="no-data-message absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-80 hidden">
+                                <span class="text-gray-500 text-lg">데이터 없음</span>
+                            </div>
+                        </div>
+                        <button id="totalBytesExpandBtn" class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors" disabled>
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </button>
+                    </div>
+                    <!-- Total Packets Chart -->
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col relative">
+                        <h3 class="font-bold text-gray-700 mb-2">전체 패킷</h3>
+                        <div class="relative flex-grow min-h-[300px]">
+                            <canvas id="totalPacketsChartCanvas"></canvas>
+                            <div id="totalPacketsNoData" class="no-data-message absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-80 hidden">
+                                <span class="text-gray-500 text-lg">데이터 없음</span>
+                            </div>
+                        </div>
+                        <button id="totalPacketsExpandBtn" class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors" disabled>
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
+    </div>
 
-        <!-- 통합 대역폭 차트 섹션 -->
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">통합 평균 대역폭</h2>
-            <div>
-                <canvas id="totalBandwidthChart"></canvas>
+    <!-- 팝업 모달 -->
+    <div id="chartPopupModal" class="hidden">
+        <div id="chartPopupContent" class="transform transition-transform scale-95 duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="popupChartTitle" class="text-xl font-bold text-gray-800"></h3>
+                <button id="closePopupBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
+            <canvas id="popupChartCanvas"></canvas>
         </div>
-
-        <!-- 통합 연결 수 차트 섹션 -->
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">통합 최대 동시 연결 수</h2>
-            <div>
-                <canvas id="totalConnectionsChart"></canvas>
-            </div>
-        </div>
-
-        <!-- 개별 가상 서비스 대역폭 차트 섹션 -->
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Virtual Service별 평균 대역폭</h2>
-            <div>
-                <canvas id="individualBandwidthChart"></canvas>
-            </div>
-        </div>
-
-        <!-- 개별 가상 서비스 연결 수 차트 섹션 -->
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Virtual Service별 최대 동시 연결 수</h2>
-            <div>
-                <canvas id="individualConnectionsChart"></canvas>
-            </div>
-        </div>
-    </main>
+    </div>
 
     <!-- 푸터 -->
-    <footer class="bg-gray-800 text-white p-4 text-center mt-auto">
-        <p>&copy; 2025 TKG SME Group in KOREA. All rights reserved.</p>
+    <footer class="bg-gray-200 text-gray-600 p-4 text-center mt-auto">
+        <p>&copy; 2024 Avi LB 성능 모니터링</p>
     </footer>
 
     <script>
-        // 전역 변수
-        let totalBandwidthChart = null;
-        let totalConnectionsChart = null;
-        let individualBandwidthChart = null;
-        let individualConnectionsChart = null;
-        const apiBaseUrl = '/api';
+        const vsSelect = document.getElementById('vsSelect');
+        const searchBtn = document.getElementById('searchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const backBtn = document.getElementById('backBtn');
+        const chartLoading = document.getElementById('chartLoading');
+        
+        // 시간 입력 필드
+        const startTimeInput = document.getElementById('startTime');
+        const endTimeInput = document.getElementById('endTime');
 
-        // DOM 요소
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const timeRangeSelect = document.getElementById('time-range');
-        const authStatus = document.getElementById('auth-status');
-        const logoutButton = document.getElementById('logout-button');
-        const messageBox = document.getElementById('message-box');
-        const messageText = document.getElementById('message-text');
+        // 차트 캔버스 요소들
+        const bandwidthChartCanvas = document.getElementById('bandwidthChartCanvas');
+        const connectionsChartCanvas = document.getElementById('connectionsChartCanvas');
+        const totalBytesChartCanvas = document.getElementById('totalBytesChartCanvas');
+        const totalPacketsChartCanvas = document.getElementById('totalPacketsChartCanvas');
+        
+        // 확대 버튼 요소들
+        const bandwidthExpandBtn = document.getElementById('bandwidthExpandBtn');
+        const connectionsExpandBtn = document.getElementById('connectionsExpandBtn');
+        const totalBytesExpandBtn = document.getElementById('totalBytesExpandBtn');
+        const totalPacketsExpandBtn = document.getElementById('totalPacketsExpandBtn');
 
-        // 메시지 박스 표시 함수
-        function showMessageBox(message) {
-            messageText.textContent = message;
-            messageBox.classList.remove('hidden');
-        }
+        // 차트 인스턴스를 저장할 변수들
+        let bandwidthChart = null;
+        let connectionsChart = null;
+        let totalBytesChart = null;
+        let totalPacketsChart = null;
 
-        // 메시지 박스 숨기기 함수
-        function hideMessageBox() {
-            messageBox.classList.add('hidden');
-        }
+        // 팝업 모달 관련 요소들
+        const chartPopupModal = document.getElementById('chartPopupModal');
+        const popupChartTitle = document.getElementById('popupChartTitle');
+        const popupChartCanvas = document.getElementById('popupChartCanvas');
+        const closePopupBtn = document.getElementById('closePopupBtn');
+        let popupChart = null;
+        
+        // 각 차트의 메트릭 정보
+        const metricConfigs = [
+            { id: 'bandwidth', canvas: bandwidthChartCanvas, chart: () => bandwidthChart, noData: document.getElementById('bandwidthNoData'), name: '평균 대역폭', unit: 'bps', color: '#3b82f6', metricName: 'l4_client.avg_bandwidth', expandBtn: bandwidthExpandBtn },
+            { id: 'connections', canvas: connectionsChartCanvas, chart: () => connectionsChart, noData: document.getElementById('connectionsNoData'), name: '평균 연결 수', unit: '', color: '#ef4444', metricName: 'l4_server.avg_open_conns', expandBtn: connectionsExpandBtn },
+            { id: 'totalBytes', canvas: totalBytesChartCanvas, chart: () => totalBytesChart, noData: document.getElementById('totalBytesNoData'), name: '전체 바이트', unit: 'Bytes', color: '#10b981', metricName: 'l4_client.total_bytes', expandBtn: totalBytesExpandBtn },
+            { id: 'totalPackets', canvas: totalPacketsChartCanvas, chart: () => totalPacketsChart, noData: document.getElementById('totalPacketsNoData'), name: '전체 패킷', unit: '', color: '#f59e0b', metricName: 'l4_server.total_packets', expandBtn: totalPacketsExpandBtn },
+        ];
 
-        // 로딩 상태 표시/숨기기
-        function showLoading() {
-            loadingOverlay.classList.remove('hidden');
-        }
 
-        function hideLoading() {
-            loadingOverlay.classList.add('hidden');
-        }
-
-        // API 호출 도우미 함수
-        async function fetchAPI(url, options = {}) {
-            showLoading();
+        /**
+         * @description 페이지 로드 시 VS 목록을 가져와 드롭다운 메뉴를 채웁니다.
+         */
+        async function fetchVsList() {
             try {
-                const response = await fetch(url, options);
+                const response = await fetch('/api/vs_list');
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        showMessageBox('세션이 만료되었습니다. 다시 로그인해 주세요.');
-                        window.location.href = '/';
-                        return null;
-                    }
-                    throw new Error(`API Error: ${response.statusText}`);
+                    throw new Error('VS List API 응답 실패');
                 }
-                return await response.json();
-            } catch (error) {
-                console.error("API 호출 오류:", error);
-                showMessageBox(`API 호출 실패: ${error.message}`);
-                return null;
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // 로그아웃 버튼 이벤트
-        logoutButton.addEventListener('click', async () => {
-            const result = await fetchAPI(`${apiBaseUrl}/logout`, { method: 'POST' });
-            if (result && result.success) {
-                showMessageBox(result.message);
-                window.location.href = '/';
-            } else {
-                showMessageBox('로그아웃 실패');
-            }
-        });
-
-        // 초기 로그인 상태 확인
-        async function checkLoginStatus() {
-            const status = await fetchAPI(`${apiBaseUrl}/check_login_status`);
-            if (status && status.is_logged_in) {
-                authStatus.textContent = '로그인됨';
-                logoutButton.classList.remove('hidden');
-            } else {
-                authStatus.textContent = '로그인되지 않음';
-                logoutButton.classList.add('hidden');
-                window.location.href = '/';
-            }
-        }
-
-        // 통합 성능 데이터 가져오기 및 그래프 업데이트
-        async function fetchAllPerformanceData(duration) {
-            const performanceData = await fetchAPI(`${apiBaseUrl}/performance?duration_minutes=${duration}`);
-            if (performanceData && performanceData.results.length > 0) {
-                updateCombinedCharts(performanceData.results);
-                updateIndividualCharts(performanceData.results);
-            } else {
-                showMessageBox('선택된 시간 범위의 통합 성능 데이터를 가져오지 못했습니다.');
-                if (totalBandwidthChart) totalBandwidthChart.destroy();
-                if (totalConnectionsChart) totalConnectionsChart.destroy();
-                if (individualBandwidthChart) individualBandwidthChart.destroy();
-                if (individualConnectionsChart) individualConnectionsChart.destroy();
-            }
-        }
-
-        // 통합 차트 업데이트 함수
-        function updateCombinedCharts(data) {
-            const aggregatedData = {};
-            const colors = ['#4F46E5', '#EF4444', '#10B981', '#F59E0B', '#6366F1', '#EC4899', '#3B82F6', '#8B5CF6'];
-
-            data.forEach(vs => {
-                vs.series.forEach(series => {
-                    const metricName = series.header.name;
-                    series.data.forEach(point => {
-                        const timestamp = new Date(point.timestamp).toISOString();
-                        if (!aggregatedData[timestamp]) {
-                            aggregatedData[timestamp] = {};
-                        }
-                        if (!aggregatedData[timestamp][metricName]) {
-                            aggregatedData[timestamp][metricName] = 0;
-                        }
-                        aggregatedData[timestamp][metricName] += point.value;
-                    });
+                const vsList = await response.json();
+                
+                vsList.forEach(vs => {
+                    const option = document.createElement('option');
+                    option.value = vs.uuid;
+                    option.textContent = vs.name;
+                    vsSelect.appendChild(option);
                 });
-            });
-
-            const labels = Object.keys(aggregatedData).sort();
-            const aggregatedBandwidth = labels.map(ts => (aggregatedData[ts]['l4_client.avg_bandwidth'] || 0) / 1000); // kbps로 변환
-            const aggregatedConnections = labels.map(ts => aggregatedData[ts]['l4_client.max_open_conns'] || 0);
-
-            const displayLabels = labels.map(ts => new Date(ts).toLocaleTimeString());
-
-            if (totalBandwidthChart) totalBandwidthChart.destroy();
-            if (totalConnectionsChart) totalConnectionsChart.destroy();
-
-            totalBandwidthChart = new Chart(document.getElementById('totalBandwidthChart'), {
-                type: 'line',
-                data: {
-                    labels: displayLabels,
-                    datasets: [{
-                        label: '통합 평균 대역폭 (kbps)',
-                        data: aggregatedBandwidth,
-                        borderColor: colors[0],
-                        tension: 0.1,
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: '통합 평균 대역폭'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'kbps'
-                            }
-                        }
-                    }
-                }
-            });
-
-            totalConnectionsChart = new Chart(document.getElementById('totalConnectionsChart'), {
-                type: 'line',
-                data: {
-                    labels: displayLabels,
-                    datasets: [{
-                        label: '통합 최대 동시 연결 수',
-                        data: aggregatedConnections,
-                        borderColor: colors[1],
-                        tension: 0.1,
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: '통합 최대 동시 연결 수'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: '연결 수'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // 개별 차트 업데이트 함수
-        function updateIndividualCharts(data) {
-            const colors = ['#4F46E5', '#EF4444', '#10B981', '#F59E0B', '#6366F1', '#EC4899', '#3B82F6', '#8B5CF6'];
-
-            // 개별 대역폭 차트를 위한 데이터셋
-            const individualBandwidthDatasets = data.map((vs, index) => {
-                const series = vs.series.find(s => s.header.name === 'l4_client.avg_bandwidth');
-                return {
-                    label: vs.metric_entity_name,
-                    data: series ? series.data.map(point => ({
-                        x: new Date(point.timestamp).toLocaleTimeString(),
-                        y: point.value / 1000 // kbps로 변환
-                    })) : [],
-                    borderColor: colors[index % colors.length],
-                    tension: 0.1,
-                    fill: false,
-                };
-            });
-
-            // 개별 연결 수 차트를 위한 데이터셋
-            const individualConnectionsDatasets = data.map((vs, index) => {
-                const series = vs.series.find(s => s.header.name === 'l4_client.max_open_conns');
-                return {
-                    label: vs.metric_entity_name,
-                    data: series ? series.data.map(point => ({
-                        x: new Date(point.timestamp).toLocaleTimeString(),
-                        y: point.value
-                    })) : [],
-                    borderColor: colors[index % colors.length],
-                    tension: 0.1,
-                    fill: false,
-                };
-            });
-            
-            // 모든 라벨(시간)을 통합
-            const allLabels = Array.from(new Set(data.flatMap(vs => 
-                vs.series[0].data.map(point => new Date(point.timestamp).toLocaleTimeString())
-            ))).sort();
-
-            if (individualBandwidthChart) individualBandwidthChart.destroy();
-            if (individualConnectionsChart) individualConnectionsChart.destroy();
-
-            individualBandwidthChart = new Chart(document.getElementById('individualBandwidthChart'), {
-                type: 'line',
-                data: {
-                    labels: allLabels,
-                    datasets: individualBandwidthDatasets
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Virtual Service별 평균 대역폭'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'kbps'
-                            }
-                        }
-                    }
-                }
-            });
-
-            individualConnectionsChart = new Chart(document.getElementById('individualConnectionsChart'), {
-                type: 'line',
-                data: {
-                    labels: allLabels,
-                    datasets: individualConnectionsDatasets
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Virtual Service별 최대 동시 연결 수'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: '연결 수'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // 시간 범위 선택 변경 이벤트
-        timeRangeSelect.addEventListener('change', (e) => {
-            const duration = e.target.value;
-            fetchAllPerformanceData(duration);
-        });
-
-        // 페이지 로드 시 초기화 및 5초마다 갱신
-        document.addEventListener('DOMContentLoaded', () => {
-            checkLoginStatus();
-            const initialDuration = timeRangeSelect.value;
-            let refreshInterval;
-
-            function refreshData() {
-                fetchAllPerformanceData(initialDuration);
+            } catch (error) {
+                console.error('Virtual Service 목록을 불러오는 중 오류 발생:', error);
             }
+        }
+        
+        /**
+         * @description 차트를 조회하는 함수.
+         * 새로운 API인 'api/performance_by_time'을 호출합니다.
+         */
+        async function fetchAndRenderAllCharts() {
+            const uuid = vsSelect.value;
+            // moment.js를 사용하여 ISO 8601 문자열을 Unix 타임스탬프로 변환
+            const startTime = moment(startTimeInput.value).unix();
+            const endTime = moment(endTimeInput.value).unix();
+            
+            if (!uuid || !startTime || !endTime) {
+                alert('Virtual Service를 선택하고 시작/종료 시간을 입력해주세요.');
+                return;
+            }
+            
+            const apiUrl = `/api/performance_by_time/${uuid}?start_timestamp=${startTime}&end_timestamp=${endTime}`;
+            
+            chartLoading.classList.remove('hidden');
+            metricConfigs.forEach(config => config.noData.classList.add('hidden'));
+            resetCharts();
+            
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('API 응답 실패');
+                }
+                
+                const data = await response.json();
+                
+                // data.results가 빈 배열이거나 유효한 데이터가 없을 때
+                if (!data.results || data.results.length === 0 || !data.results[0].series) {
+                    metricConfigs.forEach(config => {
+                        config.noData.classList.remove('hidden');
+                        config.noData.querySelector('span').textContent = '데이터가 없습니다.';
+                        config.expandBtn.disabled = true;
+                    });
+                    return;
+                }
+                
+                const vsData = data.results[0];
+                
+                metricConfigs.forEach(config => {
+                    const series = vsData.series.find(s => s.header.name === config.metricName);
+                    if (series && series.data && series.data.length > 0) {
+                        renderChart(config, series.data);
+                        config.expandBtn.disabled = false; // 차트가 그려지면 확대 버튼 활성화
+                    } else {
+                        config.noData.classList.remove('hidden');
+                        config.noData.querySelector('span').textContent = '데이터가 없습니다.';
+                        config.expandBtn.disabled = true; // 데이터가 없으면 확대 버튼 비활성화
+                    }
+                });
+                
+            } catch (error) {
+                console.error('차트 데이터를 불러오는 중 오류 발생:', error);
+                metricConfigs.forEach(config => {
+                    config.noData.classList.remove('hidden');
+                    config.noData.querySelector('span').textContent = '데이터를 불러오는 데 실패했습니다.';
+                    config.expandBtn.disabled = true; // 오류 발생 시 버튼 비활성화
+                });
+            } finally {
+                chartLoading.classList.add('hidden');
+            }
+        }
+        
+        /**
+         * @description 단일 차트를 렌더링하는 헬퍼 함수
+         */
+        function renderChart(config, seriesData) {
+            // 기존 차트가 있으면 제거
+            const chartInstance = config.chart();
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            // 데이터를 시간순으로 정렬
+            seriesData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-            refreshData(); // 초기 로드 시 한 번 실행
-            refreshInterval = setInterval(refreshData, 5000); // 5초마다 갱신
-        });
-    </script>
-</body>
-</html>
-
+            const chartData = {
+                labels: seriesData.map(d => moment(d.timestamp)),
+                datasets: [{
+                    label: config.na

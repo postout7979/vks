@@ -26,6 +26,9 @@ USERS = {
     "admin": "admin"
 }
 
+session_id = None
+session_token = None
+
 # Avi Controller 정보 (환경 변수에서 가져옴)
 # 컨테이너 환경에서 실행될 때 이 변수들이 설정되어야 합니다.
 AVI_CONTROLLER_IP = os.environ.get("AVI_CONTROLLER_IP")
@@ -39,11 +42,6 @@ DB_USER = os.environ.get("POSTGRES_USER")
 DB_PASS = os.environ.get("POSTGRES_PASSWORD")
 DB_HOST = os.environ.get("DB_HOST", "db")
 DB_PORT = os.environ.get("DB_PORT", "5432")
-
-# 백그라운드 스레드가 사용할 전역 세션 변수
-session_id = None
-session_token = None
-avisession_id = None
 
 # 데이터베이스 연결
 def get_db_connection():
@@ -105,7 +103,7 @@ def check_login_status():
     else:
         return jsonify({'is_logged_in': False}), 200
 
-# AVI Controller 로그인 API (웹 요청용)
+# AVI Controller 로그인 API
 @app.route('/api/login', methods=['POST'])
 def login():
     """
@@ -134,17 +132,17 @@ def login():
         response.raise_for_status()
 
         # 세션 쿠키 추출
-        session_id_val = response.cookies.get('sessionid')
-        session_token_val = response.cookies.get('csrftoken')
-        avisession_id_val = response.cookies.get('avi-sessionid')
+        session_id = response.cookies.get('sessionid')
+        session_token = response.cookies.get('csrftoken')
+        avisession_id = response.cookies.get('avi-sessionid')
 
-        if session_id_val:
+        if session_id:
             # Flask 세션에 Avi API 세션 정보 저장
             session['logged_in'] = True
             session['username'] = username
-            session['avi_api_sessionid'] = session_id_val
-            session['avi_api_token'] = session_token_val
-            session['avisessionid'] = avisession_id_val
+            session['avi_api_sessionid'] = session_id
+            session['avi_api_token'] = session_token
+            session['avisessionid'] = avisession_id
 
             return jsonify({"success": True, "message": "로그인 성공"}), 200
         else:
@@ -168,7 +166,7 @@ def logout():
         return jsonify({"success": True, "message": "로그아웃 성공"}), 200
     except Exception as e:
         return jsonify({"success": False, "message": "로그아웃 중 오류 발생"}), 500
-        
+
 # VS 목록 조회 API
 @app.route('/api/vs_list')
 @login_required
@@ -190,36 +188,6 @@ def get_vs_list():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-# 백그라운드 스레드용 Avi Controller 인증 함수
-def authenticate_background_thread():
-    """백그라운드 스레드를 위해 Avi Controller에 로그인하고 세션 정보를 업데이트합니다."""
-    global session_token, session_id, avisession_id
-    
-    login_url = f"https://{AVI_CONTROLLER_IP}/login"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Avi-Version": API_VERSION
-    }
-    data = {
-        "username": AVI_USERNAME,
-        "password": AVI_PASSWORD
-    }
-
-    try:
-        response = requests.post(login_url, json=data, headers=headers, verify=False)
-        response.raise_for_status()
-        session_id = response.cookies.get('sessionid')
-        session_token = response.cookies.get('csrftoken')
-        avisession_id = response.cookies.get('avi-sessionid')
-        print("백그라운드 스레드 로그인 성공, 세션 ID 및 토큰 획득.")
-        return True
-    except requests.exceptions.RequestException as e:
-        print(f"백그라운드 스레드 자동 로그인 실패: {e}")
-        session_id = None
-        session_token = None
-        avisession_id = None
-        return False
-
 # 백그라운드에서 주기적으로 AVI Controller로부터 성능 데이터 가져와 DB에 저장
 def fetch_and_save_performance_data():
     """
@@ -227,14 +195,32 @@ def fetch_and_save_performance_data():
     PostgreSQL 데이터베이스에 저장합니다.
     """
     global session_token, session_id, avisession_id
-    
+
     while True:
         conn = None
         try:
-            # 세션 토큰이 없거나 유효하지 않으면 로그인 시도
-            if not session_token or not session_id:
-                if not authenticate_background_thread():
-                    time.sleep(10)
+            # 세션 토큰이 없으면 로그인 시도
+            if not session_id or not session_token:
+                print("세션 ID가 없어 로그인 시도 중...")
+                login_url = f"https://{AVI_CONTROLLER_IP}/login"
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Avi-Version": API_VERSION
+                }
+                data = {
+                    "username": AVI_USERNAME,
+                    "password": AVI_PASSWORD
+                }
+                try:
+                    response = requests.post(login_url, json=data, headers=headers, verify=False)
+                    response.raise_for_status()
+                    session_id = response.cookies.get('sessionid')
+                    session_token = response.cookies.get('csrftoken')
+                    avisession_id = response.cookies.get('avi-sessionid')
+                    print("로그인 성공, 세션 ID 및 토큰 획득.")
+                except requests.exceptions.RequestException as e:
+                    print(f"자동 로그인 실패: {e}")
+                    time.sleep(15)
                     continue
 
             headers = {
@@ -246,19 +232,6 @@ def fetch_and_save_performance_data():
             # VS 목록 가져오기
             vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
             vs_response = requests.get(vs_list_url, headers=headers, cookies=cookies, verify=False)
-            
-            # 인증 실패 시 재로그인 시도
-            if vs_response.status_code == 401:
-                print("세션 만료. 백그라운드 스레드 재로그인 시도 중...")
-                if authenticate_background_thread():
-                    # 재로그인 성공 후 다시 API 호출 시도
-                    headers["X-CSRFToken"] = session_token
-                    cookies["sessionid"] = session_id
-                    vs_response = requests.get(vs_list_url, headers=headers, cookies=cookies, verify=False)
-                else:
-                    time.sleep(10)
-                    continue
-            
             vs_response.raise_for_status()
             vs_data = vs_response.json()
             vs_name_map = {vs['uuid']: vs['name'] for vs in vs_data.get('results', [])}
@@ -268,7 +241,7 @@ def fetch_and_save_performance_data():
                 continue
 
             # 성능 데이터 가져오기
-            performance_url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.max_open_conns&limit=1"
+            performance_url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_server.avg_open_conns&limit=1"
             response = requests.get(performance_url, headers=headers, cookies=cookies, verify=False)
             response.raise_for_status()
             performance_data = response.json()
@@ -315,7 +288,7 @@ def fetch_and_save_performance_data():
         except requests.exceptions.RequestException as e:
             print(f"AVI Controller에서 데이터 가져오기 실패: {e}")
             # 인증 실패 시 세션을 재설정하여 다음 루프에서 재로그인 시도
-            if 'response' in locals() and response.status_code == 401:
+            if response.status_code == 401:
                 session_id = None
                 session_token = None
         except Exception as e:
@@ -324,44 +297,27 @@ def fetch_and_save_performance_data():
         # 5초마다 실행
         time.sleep(5)
 
-# 신규 라우트: 통합 차트 페이지 렌더링
-@app.route('/chart')
-def chart_page():
-    """통합 차트 페이지를 렌더링합니다."""
-    if 'username' not in session:
-        return redirect(url_for('index')) # 로그인되어 있지 않으면 메인 페이지로 리디렉션
-    return render_template('chart.html')
-
 # API: DB에서 성능 데이터 조회 (모든 VS)
 @app.route('/api/performance')
 @login_required
 def get_performance_data():
-    """모든 VS의 최근 성능 데이터를 DB에서 조회하여 반환합니다.
-    'duration_minutes' 쿼리 매개변수로 시간 범위를 설정할 수 있습니다.
-    """
     conn = get_db_connection()
     if not conn:
         print("API: 데이터베이스에 연결할 수 없습니다.")
         return jsonify({"error": "데이터베이스에 연결할 수 없습니다."}), 500
 
-    # 'duration_minutes' 쿼리 매개변수를 가져오고, 기본값은 3분으로 설정합니다.
-    duration_minutes = request.args.get('duration_minutes', 3, type=int)
-
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL("""
-                    SELECT vs_uuid, vs_name, metric_id, value, timestamp
-                    FROM vs_performance
-                    WHERE timestamp >= NOW() - INTERVAL %s
-                    ORDER BY vs_uuid, metric_id, timestamp;
-                """),
-                (f'{duration_minutes} minutes',)
-            )
+            cur.execute("""
+                SELECT vs_uuid, vs_name, metric_id, value, timestamp
+                FROM vs_performance
+                WHERE timestamp >= NOW() - INTERVAL '1 minutes'
+                ORDER BY vs_uuid, metric_id, timestamp;
+            """)
             results = cur.fetchall()
 
             if not results:
-                print("API: 데이터베이스에 최근 데이터가 없습니다.")
+                print("API: 데이터베이스에 최근 1분 데이터가 없습니다.")
                 return jsonify({"results": []}), 200
 
             vs_data_map = defaultdict(lambda: {'series': defaultdict(list)})
@@ -388,7 +344,7 @@ def get_performance_data():
                     header = {'name': metric_id}
                     if metric_id == 'l4_client.avg_bandwidth':
                         header['units'] = 'bps'
-                    elif metric_id == 'l4_client.max_open_conns':
+                    elif metric_id == 'l4_server.avg_open_conns':
                         header['units'] = 'connections'
 
                     vs_item['series'].append({
@@ -402,14 +358,13 @@ def get_performance_data():
         print(f"API: 데이터베이스 조회 실패: {e}")
         return jsonify({"error": f"데이터베이스 조회 실패: {e}"}), 500
     finally:
-        if conn:
-            conn.close()
+        conn.close()
 
 # API: 특정 VS의 성능 데이터 조회
 @app.route('/api/performance/<string:vs_uuid>')
 @login_required
 def get_vs_performance_data(vs_uuid):
-    """특정 VS의 최근 3분 성능 데이터를 DB에서 조회하여 반환합니다."""
+    """특정 VS의 최근 10분 성능 데이터를 DB에서 조회하여 반환합니다."""
     conn = get_db_connection()
     if not conn:
         print("API: 데이터베이스에 연결할 수 없습니다.")
@@ -421,7 +376,7 @@ def get_vs_performance_data(vs_uuid):
                 sql.SQL("""
                     SELECT vs_uuid, vs_name, metric_id, value, timestamp
                     FROM vs_performance
-                    WHERE vs_uuid = %s AND timestamp >= NOW() - INTERVAL '3 minutes'
+                    WHERE vs_uuid = %s AND timestamp >= NOW() - INTERVAL '1 minutes'
                     ORDER BY metric_id, timestamp;
                 """),
                 (vs_uuid,)
@@ -429,7 +384,7 @@ def get_vs_performance_data(vs_uuid):
             results = cur.fetchall()
 
             if not results:
-                print(f"API: 특정 VS (UUID: {vs_uuid})에 대한 최근 3분 데이터가 없습니다.")
+                print(f"API: 특정 VS (UUID: {vs_uuid})에 대한 최근 1분 데이터가 없습니다.")
                 return jsonify({"results": []}), 404
 
             vs_data_map = defaultdict(list)
@@ -458,8 +413,7 @@ def get_vs_performance_data(vs_uuid):
         print(f"API: 데이터베이스 조회 실패: {e}")
         return jsonify({"error": f"데이터베이스 조회 실패: {e}"}), 500
     finally:
-        if conn:
-            conn.close()
+        conn.close()
 
 
 @app.route('/api/pool')
