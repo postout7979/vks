@@ -64,6 +64,10 @@
         .chart-popup-container {
             width: 100%;
         }
+        /* AI Insight 박스 스타일링 */
+        #ai-insight-box {
+            animation: fadeIn 0.5s ease-in-out;
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -84,6 +88,7 @@
                             <li><a href="#" id="menu-home" class="nav-item active">HOME</a></li>
                             <li><a href="#" id="menu-vslist" class="nav-item">Virtual Service List</a></li>
                             <li><a href="#" id="menu-total-monitoring" class="nav-item">Total VS Monitoring</a></li>
+                            <li><a href="#" id="menu-ai-insight" class="nav-item">AI Insight</a></li>
 			    <li><a href="#" id="menu-event" class="nav-item">Event</a></li>
                         </ul>
                     </nav>
@@ -208,6 +213,7 @@
             'home': document.getElementById('section-home'),
             'vslist': document.getElementById('section-vslist'),
             'total-monitoring': document.getElementById('section-total-monitoring'),
+            'ai-insight': document.getElementById('section-ai-insight')
 	    'event': document.getElementById('section-event')
         };
         
@@ -685,6 +691,59 @@
             document.getElementById('total-bandwidth-display').textContent = `${totalKbps} kbps`;
         }
 
+	 * @description Virtual Service의 성능 데이터를 가져와 AI Insight 대시보드에 렌더링하는 함수.
+	 */
+	async function fetchAIInsightDataAndRender() {
+	    const insightStatsContainer = document.getElementById('insight-stats');
+	    insightStatsContainer.innerHTML = '<p class="text-center text-gray-500">데이터를 불러오는 중입니다...</p>';
+
+	    try {
+	        const response = await fetch('/api/performance');
+	        if (!response.ok) {
+	            throw new Error('API 응답 실패');
+	        }
+	        const data = await response.json();
+        
+	        insightStatsContainer.innerHTML = '';
+	        const vsData = data.results;
+
+	        // 예시: 가장 첫 번째 VS의 대역폭 데이터를 사용합니다.
+	        if (vsData.length > 0) {
+	            const firstVs = vsData[0];
+	            const bandwidthSeries = firstVs.series.find(s => s.header.name === 'l4_client.avg_bandwidth');
+	            if (bandwidthSeries && bandwidthSeries.data.length > 0) {
+	                // 최신 대역폭 값 (bps)
+	                const latestBandwidthBps = bandwidthSeries.data[bandwidthSeries.data.length - 1].value;
+	                const latestBandwidthKbps = (latestBandwidthBps / 1000).toFixed(2);
+	                
+	                // 게이지의 최댓값을 임의로 설정 (예: 10000 Kbps)
+	                const maxBandwidthKbps = 10000; 
+	                // 게이지 채울 비율 계산
+	                const percentage = Math.min(100, (latestBandwidthKbps / maxBandwidthKbps) * 100);
+	
+	                const cardHtml = `
+	                    <div class="bg-blue-100 p-6 rounded-lg shadow-md flex flex-col items-center">
+	                        <h3 class="text-lg font-semibold mb-4">현재 대역폭</h3>
+	                        <p class="text-4xl font-bold text-blue-600 mb-4">${latestBandwidthKbps} Kbps</p>
+        	                <div class="w-full bg-gray-200 rounded-full h-8 overflow-hidden relative">
+	                            <div class="bg-blue-500 h-full transition-all duration-500 ease-in-out" style="width: ${percentage}%;"></div>
+                	            <img src="https://via.placeholder.com/30" alt="Moving Indicator" 
+                        	         class="absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-in-out" 
+                                	 style="left: calc(${percentage}% - 15px);">
+	                        </div>
+        	            </div>
+	                `;
+	                insightStatsContainer.innerHTML = cardHtml;
+	            } else {
+	                insightStatsContainer.innerHTML = '<p class="text-center text-gray-500">데이터가 없습니다.</p>';
+	            }
+	        }
+	    } catch (error) {
+	        console.error('AI Insight 데이터를 불러오는 중 오류 발생:', error);
+	        insightStatsContainer.innerHTML = '<p class="text-center text-red-500">데이터를 불러오지 못했습니다.</p>';
+	    }
+	}	
+
         // --- 이벤트 리스너 ---
         document.getElementById('menu-home').addEventListener('click', (e) => {
             e.preventDefault();
@@ -700,6 +759,12 @@
             e.preventDefault();
             showSection('total-monitoring');
         });
+
+	document.getElementById('menu-ai-insight').addEventListener('click', (e) => {
+	    e.preventDefault();
+	    showSection('ai-insight');
+	    fetchAIInsightDataAndRender();
+	});
 
         document.getElementById('menu-event').addEventListener('click', (e) => {
             e.preventDefault();
