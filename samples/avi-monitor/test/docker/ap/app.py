@@ -91,13 +91,30 @@ def get_vs_list():
         "X-Avi-Version": API_VERSION,
         "X-CSRFToken": avi_session['csrftoken']
     }
-    url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
+    url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice/?fields=name,uuid"
+    vip_url = f"https://{AVI_CONTROLLER_IP}/api/vsvip/?fields=name,uuid,vip"
 
     try:
         response = requests.get(url, headers=headers, cookies=dict(sessionid=avi_session['sessionid']), verify=False)
         response.raise_for_status()
         vs_data = response.json()
-        vs_list = [{'name': vs['name'], 'uuid': vs['uuid']} for vs in vs_data.get('results', [])]
+
+        vip_response = requests.get(vip_url, headers=headers, cookies=dict(sessionid=avi_session['sessionid']), verify=False)
+        vip_response.raise_for_status()
+        vip_data = response.json()
+
+        for vs in vs_data['results']:
+            # name, uuid, vip
+            name = vs.get('name')
+            uuid = vs.get('uuid')
+
+            for vip in vip_data['results']:
+                vip_name = vip.get('name')
+
+                if vip_name is name:
+                    vs_list.append({ "name": name, "uuid": uuid, "vip": vip })
+
+#        vs_list = [{'name': vs['name'], 'uuid': vs['uuid'], 'uuid': vs['uuid'] } for vs in vs_data.get('results', [])]
         return jsonify(vs_list)
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
@@ -176,7 +193,7 @@ def get_vs_performance_data(vs_uuid):
         "X-CSRFToken": avi_session['csrftoken']
     }
 
-    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth&entity_uuid={vs_uuid}&limit=10"
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.avg_complete_conns,l4_client.max_open_conns&entity_uuid={vs_uuid}&limit=10&group_by={vs_uuid}"
 
     try:
         vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
