@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  avi-web:
+    build:
+      context: ./web
+    ports:
+      - "80:80"
+    depends_on:
+      - avi-ap
+
+  avi-ap:
+    build:
+      context: ./ap
+    environment:
+      # 실제 AVI 컨트롤러 정보로 변경해주세요.
+      AVI_CONTROLLER_IP: "vks-avi.tanzu.lab"
+      AVI_USERNAME: "admin"
+      AVI_PASSWORD: "VMware1!"
+
