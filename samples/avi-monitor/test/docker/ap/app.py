@@ -37,8 +37,8 @@ def session_renewal_task():
     """
     while True:
         login_to_avi_controller()
-        # 1시간(3600초)마다 세션 갱신
-        time.sleep(3600)
+        # 600초마다 세션 갱신
+        time.sleep(600)
 
 def login_to_avi_controller():
     """
@@ -130,7 +130,7 @@ def get_performance_data():
         "X-CSRFToken": avi_session['csrftoken']
     }
     
-    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.max_open_conns&limit=10"
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.max_open_conns&step=5&limit=10"
 
     try:
         vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"
@@ -193,7 +193,7 @@ def get_vs_performance_data(vs_uuid):
         "X-CSRFToken": avi_session['csrftoken']
     }
 
-    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.avg_complete_conns,l4_client.max_open_conns&entity_uuid={vs_uuid}&limit=10&group_by={vs_uuid}"
+    url = f"https://{AVI_CONTROLLER_IP}/api/analytics/metrics/virtualservice?metric_id=l4_client.avg_bandwidth,l4_client.avg_complete_conns,l4_client.max_open_conns&entity_uuid={vs_uuid}&step=5&limit=10&group_by={vs_uuid}"
 
     try:
         vs_list_url = f"https://{AVI_CONTROLLER_IP}/api/virtualservice"

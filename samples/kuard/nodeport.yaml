@@ -15,5 +15,4 @@ spec:
     app: kuard
   sessionAffinity: None
   # type: NodePort
-  type: LoadBalancer
-  loadBalancerClass: ako.vmware.com/avi-lb
+  type: NodePort

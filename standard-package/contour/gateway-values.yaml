@@ -7,10 +7,14 @@ certificates:
    leafRenewBefore: 360h
 contour:
   configFileContents:
-# useProxyProtocol is false will use ingress service.
-  useProxyProtocol: false
+    gateway:
+      gatewayRef:
+        name: contour
+        namespace: tanzu-system-ingress
+  # useProxyProtocol is false will use ingress service.
+  #useProxyProtocol: false
   # useProxyProtocol is true will use httpproxy service. update alb application profile.
-  #  useProxyProtocol: true
+  useProxyProtocol: true
   replicas: 2
   pspNames: vmware-system-restricted
   logLevel: info
