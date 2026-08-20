@@ -1,3 +1,5 @@
+This configuration is for using Different VIP network with two SE Group from different network domain.
+This diagram show VKS stretched cluster, however this AKO setting is able to be used in single vks cluster of single site.
 
 <img width="1972" height="1724" alt="image" src="https://github.com/user-attachments/assets/8f9c27c1-5504-4460-a26e-884e2e56ba65" />
 
