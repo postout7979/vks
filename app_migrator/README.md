@@ -8,6 +8,89 @@
 
 ## 3단계 워크플로
 
+### 0. 사전 준비: 소스 YAML 수집
+
+도구에 넣을 소스 YAML 은 **소스 클러스터(EKS / AKS / GKE / OpenShift)에서 `kubectl get -o yaml` 로 export** 한 파일입니다. **네임스페이스(또는 앱) 단위로 파일 1개**씩 만들면, 도구에서 소스별로 구분해서 분석하고 개별 export 할 수 있습니다.
+
+#### 수집 대상 리소스와 도구에서 쓰는 정보
+
+| 리소스 | 수집되는 정보 (소스 YAML 에 들어가는 내용) | 도구가 하는 일 |
+|---|---|---|
+| Deployment / StatefulSet / DaemonSet / CronJob / Job | 컨테이너 `image`, `nodeSelector`, `annotations`, `securityContext`, volumes, replicas, strategy, apiVersion | 이미지 경로를 Harbor 로 변경, 클라우드 annotation / nodeSelector 제거, deprecated API 변환 |
+| Service | `type`, `loadBalancerIP`, 클라우드 LB annotation(`aws-load-balancer-*`, `azure-load-balancer-*`) | annotation 제거, LoadBalancer(NSX/Avi) 검토 경고 |
+| Ingress (OpenShift: Route) | host, path, backend, TLS, ingress class / `alb.*` / `appgw.*` annotation | `networking.k8s.io/v1` 변환, Route → Ingress 변환, ingress class 검토 경고 |
+| PersistentVolumeClaim | `storageClassName`, `accessModes`, 요청 용량 | StorageClass 를 vSAN 으로 매핑, RWX 경고 |
+| ConfigMap / Secret | 이름, 키, 값 (값은 그대로 복사) | ConfigMap 안의 클라우드 참조 문자열 경고, Secret 재생성 안내 |
+| ServiceAccount | IRSA / Workload Identity annotation, `imagePullSecrets` | 클라우드 IAM annotation 제거 |
+| HPA / PodDisruptionBudget / NetworkPolicy / Role / RoleBinding | 스펙 전체 | `autoscaling/v2`, `policy/v1` 등 GA API 로 변환 |
+| Namespace (OpenShift: Project) | 이름, label | Namespace 로 변환 |
+| (OpenShift) DeploymentConfig | 스펙 전체, triggers, strategy | `Deployment` 로 변환 |
+
+`status`, `uid`, `resourceVersion`, `managedFields`, `clusterIP` 같은 서버 생성 필드와 Pod / ReplicaSet / Endpoints / Event 는 YAML 에 섞여 있어도 도구가 자동으로 제거하므로 따로 걸러낼 필요가 없습니다.
+
+#### 단일 네임스페이스 export (Kubernetes: EKS / AKS / GKE)
+
+```bash
+kubectl config use-context <source-cluster-context>
+NS=production
+RES=deployments,statefulsets,daemonsets,cronjobs,jobs,services,ingress,configmaps,secrets,persistentvolumeclaims,serviceaccounts,poddisruptionbudgets,horizontalpodautoscalers,networkpolicies,roles,rolebindings
+
+{ kubectl get namespace "$NS" -o yaml; echo '---'; kubectl get "$RES" -n "$NS" -o yaml; } > "$NS.yaml"
+```
+
+간단하게 시작하려면 `kubectl get all,cm,secret,pvc,ingress,sa,pdb,hpa -n <ns> -o yaml > <ns>.yaml` 도 사용할 수 있습니다. 다만 `all` 에는 Pod / ReplicaSet 이 포함되고 NetworkPolicy, Role, RoleBinding 은 빠집니다.
+
+#### 여러 네임스페이스를 한 번에 (네임스페이스별 파일 1개)
+
+```bash
+mkdir -p export
+for NS in production staging payments; do
+  { kubectl get namespace "$NS" -o yaml; echo '---'; kubectl get "$RES" -n "$NS" -o yaml; } > "export/$NS.yaml"
+done
+```
+
+만들어진 `export/` 폴더를 도구의 **Select folder…** 로 한 번에 올리면 파일마다 하나의 소스가 됩니다.
+
+#### OpenShift export
+
+```bash
+oc login <source-cluster>
+NS=production
+RES=deployments,statefulsets,daemonsets,cronjobs,jobs,services,configmaps,secrets,persistentvolumeclaims,serviceaccounts,poddisruptionbudgets,horizontalpodautoscalers,networkpolicies,roles,rolebindings
+
+{ oc get project "$NS" -o yaml; echo '---'; oc get deploymentconfigs,routes,"$RES" -n "$NS" -o yaml; } > "$NS.yaml"
+```
+
+`ImageStream` / `BuildConfig` 는 VKS 에 대응 리소스가 없어 도구가 제외하므로 export 하지 않아도 됩니다. DeploymentConfig 가 참조하는 이미지는 YAML 의 `image` 필드(이미 resolve 된 값)에서 읽습니다.
+
+#### 추가로 확인하면 좋은 정보 (YAML 에 넣을 필요는 없음)
+
+```bash
+# 사용 중인 이미지 전체 목록 → 마이그레이션 전에 Harbor 로 미러링할 대상 사전 점검
+kubectl get pods -n "$NS" -o jsonpath='{range .items[*]}{range .spec.initContainers[*]}{.image}{"\n"}{end}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u
+
+# PVC 의 StorageClass / 용량 / 접근 모드 → StorageClass 매핑표(gp3=vsan-default-storage-policy 등) 작성용
+kubectl get pvc -n "$NS"
+kubectl get storageclass
+
+# 사용 중인 Ingress class → 설정의 "Ingress class name" 결정용
+kubectl get ingressclass
+
+# 네임스페이스에 어떤 리소스 종류가 있는지 확인 (CRD / 커스텀 리소스 누락 점검)
+for r in $(kubectl api-resources --verbs=list --namespaced -o name); do
+  kubectl get "$r" -n "$NS" --ignore-not-found -o name 2>/dev/null
+done
+```
+
+#### 수집 시 주의사항
+
+- **Secret 에는 민감한 값(base64)이 그대로 들어갑니다.** export 파일은 안전하게 보관하고 작업 후 삭제하세요. Secret 을 YAML 로 옮기지 않고 Vault / External Secrets 로 재구성하려면 `RES` 목록에서 `secrets` 를 빼면 됩니다.
+- **CRD / 커스텀 리소스**(cert-manager, Istio, Operator 등)는 위 목록에 없습니다. 도구는 이들을 검증하지 않으므로 필요한 것만 별도로 export 하고 결과를 직접 검토하세요.
+- **Helm 으로 배포한 앱**은 `helm get manifest <release> -n <ns> > <release>.yaml` 로 렌더링된 매니페스트를 받아도 됩니다. Helm release Secret 은 도구가 자동 제외합니다.
+- `kubectl get` 은 서버가 제공하는 최신 API 버전으로 출력하므로, deprecated API(`extensions/v1beta1` 등)는 오래된 클러스터나 저장해 둔 YAML 에서만 나타납니다.
+- **데이터는 YAML 로 옮겨지지 않습니다.** PV 의 데이터(Velero 등), 클라우드 관리형 서비스(RDS, S3, Azure SQL 등), 애플리케이션 코드 안의 SDK 호출은 별도로 마이그레이션해야 합니다.
+- 클러스터 범위 리소스(ClusterRole, ClusterRoleBinding, StorageClass, PersistentVolume, IngressClass)는 대상 클러스터에서 새로 구성하는 것을 권장하며, 위 export 에는 포함하지 않습니다.
+
 ### 1. Sources & settings
 - YAML 파일을 드래그&드롭 / **Select files…** / **Select folder…** 로 여러 개 추가합니다. 각 파일은 하나의 "소스"로 유지됩니다.
 - 붙여넣기 영역에 이름을 지정해 소스를 추가할 수도 있습니다. 같은 이름은 자동으로 `name (2).yaml` 처럼 구분됩니다.
