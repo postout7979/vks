@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VKS YAML Migrator</title>
+<style>
+:root{
+  --bg:#0f1318; --panel:#171c23; --panel2:#1d232c; --line:#2a323d; --text:#e6e9ee; --muted:#8b95a5;
+  --accent:#4cc2ff; --accent2:#2b8fd1; --ok:#4cd68a; --warn:#f2b84b; --err:#ff6b6b; --info:#7aa2ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+header{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header h1{margin:0;font-size:18px}
+header h1 span{color:var(--accent)}
+header p{margin:0;color:var(--muted);font-size:13px}
+.badge-offline{margin-left:auto;font-size:12px;color:var(--ok);border:1px solid #24553b;background:#14251c;padding:2px 10px;border-radius:99px}
+
+.steps{display:flex;gap:8px;padding:14px 24px 0;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:8px 16px;border-radius:99px;cursor:pointer;font:inherit}
+.step i{font-style:normal;display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--panel2);align-items:center;justify-content:center;font-size:12px}
+.step.on{color:var(--text);border-color:var(--accent2)}
+.step.on i{background:var(--accent2);color:#fff}
+.step:disabled{opacity:.4;cursor:not-allowed}
+
+main{padding:14px 24px 30px}
+.view{display:none}
+.view.on{display:block}
+.grid1{display:grid;grid-template-columns:380px minmax(0,1fr);gap:18px;align-items:start}
+.split{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:1000px){.grid1,.split{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:0}
+.card > h2{margin:0;padding:12px 16px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card > h2 .sp{margin-left:auto}
+.card .body{padding:14px 16px}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+details.sec{border-bottom:1px solid var(--line)}
+details.sec:last-child{border-bottom:0}
+details.sec > summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
+details.sec > summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+details.sec[open] > summary::before{transform:rotate(90deg)}
+details.sec .inner{padding:2px 16px 14px}
+label.f{display:block;margin:10px 0 4px;font-size:12px;color:var(--muted)}
+input[type=text],textarea,select{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px;font:13px var(--mono)}
+input[type=text]:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent2)}
+textarea{resize:vertical;min-height:70px;white-space:pre}
+.chk{display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:13px}
+.chk input{margin-top:3px}
+.hint,.note{font-size:12px;color:var(--muted)}
+.hint{margin:4px 0 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 14px;font:inherit;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent2)}
+button.primary{background:var(--accent2);border-color:var(--accent2);color:#fff;font-weight:600}
+button.primary:hover:not(:disabled){background:var(--accent)}
+button.ghost{background:transparent}
+button.sm{padding:3px 10px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+.drop{border:2px dashed var(--line);border-radius:10px;padding:24px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s}
+.drop.over,.drop:hover{border-color:var(--accent);color:var(--text);background:#131a22}
+
+/* source list on step 1 */
+.srcrows{margin-top:12px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.srcrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.srcrow:last-child{border-bottom:0}
+.srcrow .nm{font-family:var(--mono);font-size:13px;word-break:break-all}
+.srcrow .rm{margin-left:auto;cursor:pointer;color:var(--muted);padding:0 6px}
+.srcrow .rm:hover{color:var(--err)}
+.plat{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:0 6px;letter-spacing:.5px}
+.plat.EKS{background:#3a2a10;color:#ffb45c}.plat.AKS{background:#102a44;color:#6cb6ff}
+.plat.GKE{background:#12301f;color:#5fe08f}.plat.OCP{background:#3a1717;color:#ff8a8a}
+
+/* step 2 */
+.srcitem{position:relative;padding:10px 12px 10px 14px;border-bottom:1px solid var(--line);cursor:pointer;border-left:4px solid var(--line)}
+.srcitem:hover{background:#1a2029}
+.srcitem.on{background:#18222e}
+.srcitem.ok{border-left-color:var(--ok)} .srcitem.warn{border-left-color:var(--warn)} .srcitem.error{border-left-color:var(--err)} .srcitem.all{border-left-color:var(--accent)}
+.srcitem .t{font-family:var(--mono);font-size:13px;word-break:break-all;padding-right:26px}
+.srcitem .inc{position:absolute;right:10px;top:10px}
+.srcitem .mini{font-size:12px;color:var(--muted);margin-top:3px}
+.ok-t{color:var(--ok)} .wr-t{color:var(--warn)} .er-t{color:var(--err)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-width:88px}
+.chip .n{font-size:19px;font-weight:700;line-height:1.1}
+.chip .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.chip.fixed .n{color:var(--ok)} .chip.warn .n{color:var(--warn)} .chip.error .n{color:var(--err)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px;overflow-x:auto}
+.tab{padding:10px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text);border-color:var(--accent)}
+.pane{padding:14px 16px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.filters button{padding:4px 10px;font-size:12px}
+.filters button.on{border-color:var(--accent);color:var(--accent)}
+.filters input{max-width:220px;margin-left:auto;padding:5px 8px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;position:sticky;top:0;background:var(--panel);z-index:1}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#1a2029}
+td code,.mono{font-family:var(--mono);font-size:12px;word-break:break-all}
+.lv{display:inline-block;min-width:52px;text-align:center;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
+.lv.fixed{background:#12301f;color:var(--ok)} .lv.warn{background:#38300f;color:var(--warn)}
+.lv.error{background:#3a1717;color:var(--err)} .lv.info{background:#16213a;color:var(--info)} .lv.none{background:#1d232c;color:var(--muted)}
+.arrow{color:var(--muted)}
+.del{color:var(--err)} .add{color:var(--ok)}
+pre.out{margin:0;max-height:560px;overflow:auto;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:12px;font:12.5px/1.5 var(--mono);white-space:pre}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.empty{color:var(--muted);padding:26px;text-align:center}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:1px 4px 1px 10px;font-size:12px}
+.pill b{cursor:pointer;color:var(--muted);padding:0 5px}
+.pill b:hover{color:var(--err)}
+.diff{max-height:600px;overflow:auto;background:#0b0f14;border:1px solid var(--line);border-radius:8px;font:12.5px/1.5 var(--mono)}
+.dl{white-space:pre;padding:0 10px;min-width:max-content}
+.dl.add{background:#10261a;color:#9be8bb} .dl.del{background:#2c1414;color:#ffb0b0} .dl.skip{color:var(--muted);background:#121820;font-style:italic}
+.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.topbar .sp{margin-left:auto}
+.banner{background:#38300f;border:1px solid #5b4a14;color:#f6d98a;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>VKS</span> YAML Migrator</h1>
+  <p>Public-cloud Kubernetes manifests → on-prem VCF 9.1 VKS (Harbor registry, vSAN storage)</p>
+  <span class="badge-offline">100% in-browser · no upload · works offline</span>
+</header>
+
+<nav class="steps" id="steps">
+  <button class="step on" data-step="1"><i>1</i> Sources &amp; settings</button>
+  <button class="step" data-step="2" disabled><i>2</i> Analysis</button>
+  <button class="step" data-step="3" disabled><i>3</i> Export</button>
+</nav>
+
+<main>
+<!-- ======================= STEP 1 ======================= -->
+<section class="view on" id="view1">
+ <div class="grid1">
+  <section class="card" id="settings">
+    <h2>Conversion settings</h2>
+
+    <details class="sec" open>
+      <summary>1 · Target image registry</summary>
+      <div class="inner">
+        <label class="f">Registry FQDN (host[:port])</label>
+        <input type="text" data-cfg="targetHost" placeholder="harbor.corp.local">
+        <label class="f">Project / path prefix (optional)</label>
+        <input type="text" data-cfg="targetProject" placeholder="migration">
+        <label class="f">Source path handling</label>
+        <select data-cfg="pathMode">
+          <option value="keep">Keep full source path  (…/team/app → host/project/team/app)</option>
+          <option value="flatten">Image name only  (…/team/app → host/project/app)</option>
+        </select>
+        <div class="chk"><input type="checkbox" data-cfg="rewriteDockerHub" id="c1"><label for="c1">Also rewrite implicit Docker Hub images (<code>nginx:1.25</code>)</label></div>
+        <div class="chk"><input type="checkbox" data-cfg="libraryPrefix" id="c2"><label for="c2">Insert <code>library/</code> for official Docker Hub images</label></div>
+        <div class="chk"><input type="checkbox" data-cfg="addComment" id="c3"><label for="c3">Append <code># was: &lt;original image&gt;</code> comment</label></div>
+        <label class="f">Registries to leave untouched (one per line, * wildcard)</label>
+        <textarea data-cfg="excludeRegistries" rows="2" placeholder="registry.k8s.io"></textarea>
+        <label class="f">Per-source overrides: <code>source-glob =&gt; target/path</code></label>
+        <textarea data-cfg="registryMap" rows="3" placeholder="*.dkr.ecr.*.amazonaws.com => harbor.corp.local/ecr-mirror&#10;gcr.io => harbor.corp.local/gcr"></textarea>
+        <p class="hint">An override replaces host + project for matching sources. The rest of the path is appended.</p>
+      </div>
+    </details>
+
+    <details class="sec" open>
+      <summary>2 · Cleanup rules</summary>
+      <div class="inner">
+        <div class="chk"><input type="checkbox" data-cfg="stripAnnotations" id="c4"><label for="c4">Remove cloud-specific annotations</label></div>
+        <label class="f">Annotation rules (one per line · <code>*</code> wildcard · <code>key =~ valueRegex</code> · <code>#</code> comment)</label>
+        <textarea data-cfg="annotationRules" rows="9"></textarea>
+
+        <div class="chk"><input type="checkbox" data-cfg="stripNodeSelectors" id="c5"><label for="c5">Remove cloud node labels from <code>nodeSelector</code></label></div>
+        <textarea data-cfg="nodeSelectorRules" rows="4"></textarea>
+
+        <div class="chk"><input type="checkbox" data-cfg="upgradeApis" id="c6"><label for="c6">Upgrade removed / deprecated API versions (Ingress, CronJob, HPA, PDB, apps/…)</label></div>
+        <div class="chk"><input type="checkbox" data-cfg="stripRuntime" id="c7"><label for="c7">Strip server-populated fields (status, uid, resourceVersion, clusterIP, managedFields …)</label></div>
+        <div class="chk"><input type="checkbox" data-cfg="dropGenerated" id="c8"><label for="c8">Drop controller-generated objects (owned Pods/ReplicaSets, kube-root-ca, SA tokens, Helm release secrets)</label></div>
+        <label class="f">Drop these kinds entirely (one per line)</label>
+        <textarea data-cfg="dropKinds" rows="5"></textarea>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>3 · Target VKS cluster</summary>
+      <div class="inner">
+        <label class="f">Target namespace (blank = keep)</label>
+        <input type="text" data-cfg="targetNamespace" placeholder="">
+        <label class="f">Target StorageClass for all PVCs (blank = keep)</label>
+        <input type="text" data-cfg="storageClass" placeholder="vsan-default-storage-policy">
+        <label class="f">StorageClass mapping <code>old=new</code> (overrides the field above)</label>
+        <textarea data-cfg="storageMap" rows="3" placeholder="gp3=vsan-default-storage-policy&#10;managed-premium=vsan-default-storage-policy"></textarea>
+        <label class="f">kubectl context of the VKS cluster (used in apply.sh, optional)</label>
+        <input type="text" data-cfg="kubeContext" placeholder="vks-cluster-01">
+        <div class="chk"><input type="checkbox" data-cfg="scanLeftovers" id="c9"><label for="c9">Scan result for leftover cloud references (amazonaws, azurecr, gcr.io …)</label></div>
+      </div>
+    </details>
+
+    <details class="sec" open>
+      <summary>4 · OpenShift conversion</summary>
+      <div class="inner">
+        <div class="chk"><input type="checkbox" data-cfg="convertOpenShift" id="c10"><label for="c10">Convert OpenShift resources: <code>Route</code>→<code>Ingress</code> (+TLS Secret), <code>DeploymentConfig</code>→<code>Deployment</code>, <code>Project</code>→<code>Namespace</code>; drop <code>ImageStream</code>/<code>BuildConfig</code>/<code>Build</code>, <code>seLinuxOptions</code>, auto-created SAs and dockercfg secrets</label></div>
+        <label class="f">Ingress controller on the VKS cluster (Route annotation mapping)</label>
+        <select data-cfg="ingressFlavor">
+          <option value="generic">Generic / Avi AKO (no controller-specific annotations)</option>
+          <option value="nginx">NGINX Ingress Controller</option>
+          <option value="contour">Contour</option>
+        </select>
+        <label class="f">Ingress class name → <code>spec.ingressClassName</code></label>
+        <input type="text" data-cfg="ingressClass" placeholder="nginx / contour / avi-lb">
+        <p class="hint">Route timeout, IP allow-list, rewrite-target, TLS redirect/passthrough are mapped for NGINX; timeout and TLS redirect for Contour. Everything else is listed as a review item.</p>
+      </div>
+    </details>
+
+    <div class="body row">
+      <button class="ghost" id="btnReset">Reset to defaults</button>
+      <span class="note">Settings are remembered in this browser.</span>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <h2>Source manifests <span class="sp note" id="srcCount"></span></h2>
+      <div class="body">
+        <div class="note" style="margin-bottom:10px">Export each namespace / cluster separately: <code>kubectl get all,cm,secret,pvc,ingress,sa,pdb,hpa -n &lt;ns&gt; -o yaml &gt; &lt;ns&gt;.yaml</code> — multi-document and <code>kind: List</code> are both supported. Every file stays a separate source.</div>
+        <div class="drop" id="drop">Drop one or many .yaml / .yml files here<input type="file" id="fileInput" multiple accept=".yaml,.yml,.txt" hidden><input type="file" id="dirInput" webkitdirectory hidden></div>
+        <div class="row" style="margin-top:10px">
+          <button id="btnPickFiles">Select files…</button>
+          <button id="btnPickDir">Select folder…</button>
+          <button id="btnSample">Load samples (EKS + AKS + OpenShift)</button>
+          <button class="ghost" id="btnClearAll">Remove all</button>
+        </div>
+        <div id="skipNote" class="note" style="margin-top:8px"></div>
+        <div class="srcrows" id="srcRows" hidden></div>
+
+        <label class="f" style="margin-top:16px">…or paste YAML as an additional source</label>
+        <div class="row" style="margin-bottom:6px"><input type="text" id="pasteName" placeholder="source name, e.g. payments-prod.yaml" style="max-width:340px"></div>
+        <textarea id="paste" rows="6" placeholder="apiVersion: apps/v1&#10;kind: Deployment&#10;…"></textarea>
+        <div class="row" style="margin-top:8px"><button id="btnAddPaste">Add pasted YAML as source</button></div>
+      </div>
+    </section>
+    <div class="row">
+      <button class="primary" id="btnRun" disabled>▶ Run analysis</button>
+      <span class="note" id="runNote">Add at least one source.</span>
+    </div>
+  </div>
+ </div>
+</section>
+
+<!-- ======================= STEP 2 ======================= -->
+<section class="view" id="view2">
+  <div class="topbar">
+    <button id="btnBack1">← Sources &amp; settings</button>
+    <span class="note" id="runInfo"></span>
+    <span class="sp"></span>
+    <button class="primary" id="btnTo3">Continue to export →</button>
+  </div>
+  <div class="split">
+    <aside class="card"><h2>Sources <span class="sp note">☑ = include in export</span></h2><div id="srcList"></div></aside>
+    <section class="card" id="detail">
+      <div class="body" style="border-bottom:1px solid var(--line)">
+        <div class="row" style="margin-bottom:10px"><b id="detailTitle" class="mono" style="font-size:14px"></b><span id="detailPlats"></span></div>
+        <div class="chips" id="detailChips"></div>
+      </div>
+      <div class="tabs" id="detailTabs"></div>
+      <div class="pane" id="detailBody"></div>
+    </section>
+  </div>
+</section>
+
+<!-- ======================= STEP 3 ======================= -->
+<section class="view" id="view3">
+  <div class="topbar">
+    <button id="btnBack2">← Analysis</button>
+    <span class="note" id="exportInfo"></span>
+  </div>
+  <section class="card">
+    <h2>Export for VCF VKS cluster <span class="sp note" id="exportCount"></span></h2>
+    <div class="body">
+      <div id="exportBanner"></div>
+      <div class="toolbar">
+        <button id="btnSelAll">Select all</button>
+        <button id="btnSelNone">Select none</button>
+        <span class="note" style="margin-left:12px">ZIP contents:</span>
+        <label class="chk" style="margin:0"><input type="checkbox" id="optReports" checked> reports</label>
+        <label class="chk" style="margin:0"><input type="checkbox" id="optImages" checked> image map + mirror script</label>
+        <label class="chk" style="margin:0"><input type="checkbox" id="optApply" checked> apply.sh</label>
+      </div>
+      <div class="scroll" style="max-height:none"><table>
+        <thead><tr><th style="width:34px"></th><th>Source</th><th>Output file</th><th>Resources</th><th>Images</th><th>Review</th><th style="width:210px">Export this source</th></tr></thead>
+        <tbody id="exportBody"></tbody>
+      </table></div>
+      <div class="toolbar" style="margin-top:14px">
+        <button class="primary" id="btnZipSel">⬇ Export selected (ZIP)</button>
+        <button class="primary" id="btnZipAll">⬇ Export all sources (ZIP)</button>
+        <button id="btnCombined">⬇ Selected as one combined YAML</button>
+      </div>
+      <p class="note">ZIP layout: <code>manifests/&lt;source&gt;.vks.yaml</code> per source · <code>reports/</code> · <code>images/image-map.csv</code> + <code>image-mirror.sh</code> · <code>apply.sh</code> (<code>bash apply.sh dry-run</code> → <code>bash apply.sh apply</code>). Always dry-run against the VKS cluster before the real apply.</p>
+    </div>
+  </section>
+</section>
+</main>
+
+<script type="text/plain" id="sample-eks">
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/app-irsa
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"name":"app-sa"}}
+    creationTimestamp: "2024-01-10T02:11:09Z"
+    name: app-sa
+    namespace: production
+    resourceVersion: "123456"
+    uid: 3f8a7c1e-0000-4a4a-9c9c-000000000001
+  secrets:
+  - name: app-sa-token-abcde
+- apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "3"
+      owner-team: platform
+    labels:
+      app: web
+    name: web
+    namespace: production
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app: web
+    template:
+      metadata:
+        annotations:
+          iam.amazonaws.com/role: web-role
+          prometheus.io/scrape: "true"
+        creationTimestamp: null
+        labels:
+          app: web
+      spec:
+        containers:
+        - image: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/team/web:1.4.2
+          name: web
+          ports:
+          - containerPort: 8080
+        - image: nginx:1.25
+          name: proxy
+        - image: gcr.io/google-containers/pause:3.2
+          name: pause
+        - image: "myacr.azurecr.io/backend/api:v2" # keep my comment
+          name: api
+        - image: public.ecr.aws/nginx/nginx:1.25@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          name: pinned
+        initContainers:
+        - image: busybox
+          name: init
+        nodeSelector:
+          eks.amazonaws.com/nodegroup: ng-1
+          kubernetes.io/os: linux
+        serviceAccountName: app-sa
+  status:
+    availableReplicas: 3
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    name: web
+    namespace: production
+  spec:
+    clusterIP: 172.20.10.15
+    clusterIPs:
+    - 172.20.10.15
+    ports:
+    - port: 80
+      targetPort: 8080
+    selector:
+      app: web
+    type: LoadBalancer
+  status:
+    loadBalancer:
+      ingress:
+      - hostname: abc.elb.ap-northeast-2.amazonaws.com
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      pv.kubernetes.io/bind-completed: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: ebs.csi.aws.com
+    name: data
+    namespace: production
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: 20Gi
+    storageClassName: gp3
+    volumeName: pvc-1111-2222
+  status:
+    phase: Bound
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: web-6d4cf56db6-abcde
+    ownerReferences:
+    - apiVersion: apps/v1
+      kind: ReplicaSet
+      name: web-6d4cf56db6
+  spec:
+    containers:
+    - image: nginx:1.25
+      name: x
+- apiVersion: v1
+  data:
+    app.yaml: |
+      image: this-text-inside-a-configmap-must-not-change:1.0
+      endpoint: https://s3.amazonaws.com/bucket
+  kind: ConfigMap
+  metadata:
+    name: app-config
+    namespace: production
+- apiVersion: v1
+  data:
+    password: c2VjcmV0
+  kind: Secret
+  metadata:
+    name: db-creds
+    namespace: production
+  type: Opaque
+kind: List
+metadata:
+  resourceVersion: ""
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    kubernetes.io/ingress.class: alb
+  name: web
+  namespace: production
+spec:
+  backend:
+    serviceName: fallback
+    servicePort: 80
+  rules:
+  - host: web.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: web
+          servicePort: 80
+        path: /
+      - backend:
+          serviceName: api
+          servicePort: http
+        path: /api
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: nightly
+  namespace: production
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - image: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/team/job:2.0
+            name: job
+          restartPolicy: OnFailure
+  schedule: 0 2 * * *
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web
+  namespace: production
+spec:
+  maxReplicas: 10
+  metrics:
+  - resource:
+      name: cpu
+      targetAverageUtilization: 70
+    type: Resource
+  minReplicas: 3
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  namespace: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: eks.privileged
+spec:
+  privileged: true
+</script>
+<script type="text/plain" id="sample-aks">
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: catalog-sa
+  namespace: shop-aks
+  annotations:
+    azure.workload.identity/client-id: 11111111-2222-3333-4444-555555555555
+    azure.workload.identity/tenant-id: 66666666-7777-8888-9999-000000000000
+  labels:
+    azure.workload.identity/use: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: shop-aks
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      serviceAccountName: catalog-sa
+      nodeSelector:
+        kubernetes.azure.com/agentpool: userpool
+        agentpool: userpool
+        kubernetes.io/os: linux
+      containers:
+      - name: catalog
+        image: myregistry.azurecr.io/shop/catalog:3.1.0
+        ports:
+        - containerPort: 3000
+      - name: cache
+        image: redis:7.2
+status:
+  availableReplicas: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: shop-aks
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: aks-internal-subnet
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.240.0.50
+  selector:
+    app: catalog
+  ports:
+  - port: 80
+    targetPort: 3000
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: catalog-data
+  namespace: shop-aks
+  annotations:
+    volume.beta.kubernetes.io/storage-provisioner: disk.csi.azure.com
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+  storageClassName: managed-csi-premium
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: catalog
+  namespace: shop-aks
+  annotations:
+    kubernetes.io/ingress.class: azure/application-gateway
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+  - host: catalog.example.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: catalog
+          servicePort: 80
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: catalog-sync
+  namespace: shop-aks
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: sync
+            image: myregistry.azurecr.io/shop/sync:0.9.2
+</script>
+<script type="text/plain" id="sample-ocp">
+# Sample source manifests exported from OpenShift (oc get ... -o yaml).
+# Use as test input for vks-yaml-migrator.html
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  name: shop-ocp
+  annotations:
+    openshift.io/description: Shop demo
+    openshift.io/display-name: Shop
+    openshift.io/requester: admin
+  creationTimestamp: "2025-05-01T00:00:00Z"
+  resourceVersion: "5521"
+  uid: 5b1c0a64-0000-4000-8000-000000000001
+spec:
+  finalizers:
+    - kubernetes
+status:
+  phase: Active
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shop-sa
+  namespace: shop-ocp
+imagePullSecrets:
+  - name: shop-sa-dockercfg-x4k2p
+secrets:
+  - name: shop-sa-dockercfg-x4k2p
+  - name: shop-sa-token-9q8w7
+---
+# OpenShift auto-created objects -> dropped
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: builder
+  namespace: shop-ocp
+imagePullSecrets:
+  - name: builder-dockercfg-abcde
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shop-sa-dockercfg-x4k2p
+  namespace: shop-ocp
+  annotations:
+    openshift.io/token-secret.name: shop-sa-token-9q8w7
+type: kubernetes.io/dockercfg
+data:
+  .dockercfg: e30=
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: frontend
+  namespace: shop-ocp
+  labels:
+    app: frontend
+  annotations:
+    openshift.io/generated-by: OpenShiftNewApp
+  generation: 4
+  resourceVersion: "889900"
+  uid: 5b1c0a64-0000-4000-8000-000000000002
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    app: frontend
+    deploymentconfig: frontend
+  strategy:
+    type: Rolling
+    rollingParams:
+      intervalSeconds: 1
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+    resources: {}
+    activeDeadlineSeconds: 21600
+  test: false
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+          - frontend
+        from:
+          kind: ImageStreamTag
+          name: frontend:latest
+          namespace: shop-ocp
+  template:
+    metadata:
+      annotations:
+        openshift.io/generated-by: OpenShiftNewApp
+      labels:
+        app: frontend
+        deploymentconfig: frontend
+    spec:
+      serviceAccountName: shop-sa
+      securityContext:
+        seLinuxOptions:
+          level: s0:c26,c10
+        fsGroup: 1000680000
+      containers:
+        - name: frontend
+          image: image-registry.openshift-image-registry.svc:5000/shop-ocp/frontend@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          securityContext:
+            runAsUser: 1000680000
+            capabilities:
+              drop:
+                - KILL
+                - MKNOD
+          volumeMounts:
+            - name: certs
+              mountPath: /etc/tls
+        - name: log-shipper
+          image: registry.redhat.io/openshift4/ose-logging-fluentd:v4.14
+      volumes:
+        - name: certs
+          secret:
+            secretName: frontend-serving-cert
+status:
+  availableReplicas: 3
+  latestVersion: 4
+  observedGeneration: 4
+  replicas: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: shop-ocp
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: frontend-serving-cert
+spec:
+  clusterIP: 172.30.12.34
+  clusterIPs:
+    - 172.30.12.34
+  ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    deploymentconfig: frontend
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: frontend
+  namespace: shop-ocp
+  labels:
+    app: frontend
+  annotations:
+    haproxy.router.openshift.io/timeout: 90s
+    haproxy.router.openshift.io/ip_whitelist: 10.0.0.0/8 192.168.10.0/24
+    haproxy.router.openshift.io/balance: leastconn
+    openshift.io/host.generated: "true"
+spec:
+  host: frontend-shop-ocp.apps.ocp4.example.com
+  path: /shop
+  to:
+    kind: Service
+    name: frontend
+    weight: 100
+  port:
+    targetPort: 8080-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+    certificate: |
+      -----BEGIN CERTIFICATE-----
+      MIIFAKECERTIFICATEDATAFORTESTINGONLYxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+      -----END CERTIFICATE-----
+    key: |
+      -----BEGIN PRIVATE KEY-----
+      MIIFAKEPRIVATEKEYDATAFORTESTINGONLYxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+      -----END PRIVATE KEY-----
+    caCertificate: |
+      -----BEGIN CERTIFICATE-----
+      MIIFAKEINTERMEDIATECAFORTESTINGONLYxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      -----END CERTIFICATE-----
+  wildcardPolicy: None
+status:
+  ingress:
+    - host: frontend-shop-ocp.apps.ocp4.example.com
+      routerName: default
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: api-passthrough
+  namespace: shop-ocp
+spec:
+  host: api-shop-ocp.apps.ocp4.example.com
+  to: {kind: Service, name: api, weight: 100}
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: frontend
+  namespace: shop-ocp
+spec:
+  lookupPolicy:
+    local: false
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: frontend
+  namespace: shop-ocp
+spec:
+  source:
+    git:
+      uri: https://git.example.com/shop/frontend.git
+  strategy:
+    type: Docker
+  output:
+    to:
+      kind: ImageStreamTag
+      name: frontend:latest
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: shop-ocp
+  annotations:
+    alpha.image.policy.openshift.io/resolve-names: '*'
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: quay.io/shop/api:2.0.1
+          securityContext:
+            runAsUser: 1000680001
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openshift-service-ca.crt
+  namespace: shop-ocp
+  annotations:
+    openshift.io/owning-component: service-ca
+data:
+  service-ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIFAKE
+    -----END CERTIFICATE-----
+---
+# Not convertible automatically -> warning only
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: shop-template
+objects: []
+</script>
+
+<script id="engine">
+// ==== ENGINE START ====
+const ENGINE = (function () {
+'use strict';
+
+/* ------------------------------------------------------------------ defaults */
+const DEFAULT_ANNOTATIONS = [
+'# --- Common / server-populated ---',
+'kubectl.kubernetes.io/last-applied-configuration',
+'deployment.kubernetes.io/revision',
+'pv.kubernetes.io/*',
+'volume.beta.kubernetes.io/storage-provisioner',
+'volume.beta.kubernetes.io/storage-class',
+'volume.kubernetes.io/*',
+'autoscaling.alpha.kubernetes.io/*',
+'control-plane.alpha.kubernetes.io/leader',
+'# --- Ingress class that only exists on a public cloud ---',
+'kubernetes.io/ingress.class =~ ^(alb|gce|gce-internal|azure/application-gateway.*)$',
+'# --- AWS (EKS) ---',
+'eks.amazonaws.com/*',
+'iam.amazonaws.com/*',
+'service.beta.kubernetes.io/aws-*',
+'alb.ingress.kubernetes.io/*',
+'elbv2.k8s.aws/*',
+'# --- Azure (AKS) ---',
+'service.beta.kubernetes.io/azure-*',
+'azure.workload.identity/*',
+'kubernetes.azure.com/*',
+'appgw.ingress.kubernetes.io/*',
+'# --- GCP (GKE) ---',
+'cloud.google.com/*',
+'iam.gke.io/*',
+'networking.gke.io/*',
+'beta.cloud.google.com/*',
+'ingress.gcp.kubernetes.io/*',
+'ingress.kubernetes.io/*',
+'kubernetes.io/ingress.global-static-ip-name',
+'# --- OpenShift ---',
+'openshift.io/*',
+'*.openshift.io/*'
+].join('\n');
+
+const DEFAULT_NODESELECTORS = [
+'eks.amazonaws.com/*',
+'alpha.eksctl.io/*',
+'topology.ebs.csi.aws.com/*',
+'kubernetes.azure.com/*',
+'agentpool',
+'cloud.google.com/*',
+'node.kubernetes.io/instance-type',
+'beta.kubernetes.io/instance-type',
+'failure-domain.beta.kubernetes.io/*'
+].join('\n');
+
+const DEFAULT_DROPKINDS = [
+'PodSecurityPolicy','PersistentVolume','StorageClass','CSIDriver','CSINode','VolumeAttachment',
+'Endpoints','EndpointSlice','Event','Node','ControllerRevision',
+'TargetGroupBinding','BackendConfig','FrontendConfig','ManagedCertificate'
+].join('\n');
+
+const DEFAULT_CONFIG = {
+  targetHost: 'harbor.corp.local',
+  targetProject: 'migration',
+  pathMode: 'keep',
+  rewriteDockerHub: true,
+  libraryPrefix: true,
+  addComment: false,
+  excludeRegistries: '',
+  registryMap: '',
+  stripAnnotations: true,
+  annotationRules: DEFAULT_ANNOTATIONS,
+  stripNodeSelectors: true,
+  nodeSelectorRules: DEFAULT_NODESELECTORS,
+  upgradeApis: true,
+  stripRuntime: true,
+  dropGenerated: true,
+  dropKinds: DEFAULT_DROPKINDS,
+  targetNamespace: '',
+  storageClass: '',
+  storageMap: '',
+  scanLeftovers: true,
+  kubeContext: '',
+  convertOpenShift: true,
+  ingressFlavor: 'generic',
+  ingressClass: ''
+};
+
+/* ------------------------------------------------------------------ helpers */
+function globToRegex(g) {
+  return new RegExp('^' + g.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&')).join('.*') + '$', 'i');
+}
+function parseLines(text) {
+  return String(text || '').split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#'));
+}
+function parseRules(text) {
+  return parseLines(text).map(l => {
+    const idx = l.indexOf(' =~ ');
+    if (idx >= 0) {
+      let vr = null;
+      try { vr = new RegExp(l.slice(idx + 4).trim()); } catch (e) { vr = null; }
+      return { re: globToRegex(l.slice(0, idx).trim()), valueRe: vr, raw: l };
+    }
+    return { re: globToRegex(l), valueRe: null, raw: l };
+  });
+}
+function parseMap(text, sep) {
+  const m = [];
+  parseLines(text).forEach(l => {
+    const i = l.indexOf(sep);
+    if (i > 0) m.push([l.slice(0, i).trim(), l.slice(i + sep.length).trim()]);
+  });
+  return m;
+}
+function unquote(s) {
+  s = (s || '').trim();
+  if (s.length >= 2 && ((s[0] === '"' && s[s.length - 1] === '"') || (s[0] === "'" && s[s.length - 1] === "'"))) return s.slice(1, -1);
+  return s;
+}
+function splitValue(v) {
+  v = (v || '').trim();
+  if (!v) return { val: '', quote: '', trail: '' };
+  const q = v[0];
+  if (q === '"' || q === "'") {
+    let e = 1;
+    while (e < v.length) {
+      if (q === '"' && v[e] === '\\') { e += 2; continue; }
+      if (v[e] === q) { if (q === "'" && v[e + 1] === "'") { e += 2; continue; } break; }
+      e++;
+    }
+    return { val: v.slice(1, e), quote: q, trail: v.slice(e + 1) };
+  }
+  const m = /\s+#/.exec(v);
+  if (m) return { val: v.slice(0, m.index).trim(), quote: '', trail: v.slice(m.index) };
+  return { val: v, quote: '', trail: '' };
+}
+const last = a => a[a.length - 1];
+
+/* ------------------------------------------------- line analysis (indent based) */
+const KEY_RE = /^("(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'#\-\[\{][^:]*?)\s*:(?:\s+(.*))?$/;
+const BLOCK_SCALAR_RE = /^[|>][+-]?\d*\s*(#.*)?$/;
+
+function analyze(texts) {
+  const info = [];
+  const stack = [];
+  let scalarIndent = -1;
+  for (let i = 0; i < texts.length; i++) {
+    const t = texts[i];
+    const o = { i, t, blank: false, comment: false, indent: 0, keyIndent: 0, dash: false, key: null, val: '', path: [], inScalar: false };
+    if (/^\s*$/.test(t)) { o.blank = true; o.inScalar = scalarIndent >= 0; info.push(o); continue; }
+    const m = /^(\s*)((?:-\s+)*)(.*)$/.exec(t);
+    o.indent = m[1].length; o.dash = m[2].length > 0; o.keyIndent = m[1].length + m[2].length;
+    if (scalarIndent >= 0) {
+      if (o.indent > scalarIndent) { o.inScalar = true; info.push(o); continue; }
+      scalarIndent = -1;
+    }
+    if (m[3].startsWith('#')) { o.comment = true; info.push(o); continue; }
+    const km = KEY_RE.exec(m[3]);
+    if (km) {
+      o.key = unquote(km[1]);
+      o.val = (km[2] || '').trim();
+      while (stack.length && last(stack).ki >= o.keyIndent) stack.pop();
+      o.path = stack.map(s => s.key);
+      stack.push({ ki: o.keyIndent, key: o.key });
+      if (BLOCK_SCALAR_RE.test(o.val)) scalarIndent = o.keyIndent;
+    } else if (o.dash && BLOCK_SCALAR_RE.test(m[3])) {
+      scalarIndent = o.indent;
+    }
+    info.push(o);
+  }
+  return info;
+}
+function blockEnd(info, i) {
+  const K = info[i].keyIndent;
+  let end = i;
+  for (let j = i + 1; j < info.length; j++) {
+    const x = info[j];
+    if (x.blank) continue;
+    if (x.indent > K || (x.indent === K && !info[i].dash && /^\s*-(\s|$)/.test(x.t))) end = j; else break;
+  }
+  return end;
+}
+function itemRange(info, i) {
+  const K = info[i].keyIndent;
+  let s = i, e = i;
+  for (let j = i - 1; j >= 0; j--) {
+    const x = info[j];
+    if (x.blank || x.comment) continue;
+    if (x.keyIndent < K) break;
+    s = j;
+    if (x.dash && x.keyIndent === K) break;
+  }
+  for (let j = i + 1; j < info.length; j++) {
+    const x = info[j];
+    if (x.blank || x.comment) continue;
+    if (x.keyIndent < K || (x.dash && x.keyIndent === K)) break;
+    e = j;
+  }
+  return [s, e];
+}
+const head = t => (/^(\s*(?:-\s+)*[^:]+:\s*)/.exec(t) || ['', ''])[1];
+const texts = lines => lines.map(l => l.t);
+
+/* --------------------------------------------------------- document splitting */
+function hasContent(lines) { return lines.some(l => l.t.trim() && !l.t.trim().startsWith('#')); }
+function trimBlank(lines) {
+  let s = 0, e = lines.length;
+  while (s < e && !lines[s].t.trim()) s++;
+  while (e > s && !lines[e - 1].t.trim()) e--;
+  return lines.slice(s, e);
+}
+function splitDocs(text) {
+  const raw = text.replace(/\r\n?/g, '\n').split('\n');
+  const docs = []; let cur = [];
+  raw.forEach((t, idx) => {
+    if (/^---(\s|$)/.test(t)) { if (hasContent(cur)) docs.push(cur); cur = []; return; }
+    if (/^\.\.\.\s*$/.test(t)) return;
+    cur.push({ t, n: idx + 1 });
+  });
+  if (hasContent(cur)) docs.push(cur);
+  return docs;
+}
+function unwrapList(lines) {
+  const info = analyze(texts(lines));
+  const kindL = info.find(o => o.key === 'kind' && o.path.length === 0);
+  if (!kindL || !/List$/.test(splitValue(kindL.val).val)) return null;
+  const itemsL = info.find(o => o.key === 'items' && o.path.length === 0);
+  if (!itemsL) return null;
+  if (itemsL.val !== '') return [];
+  let j = itemsL.i + 1;
+  while (j < lines.length && (info[j].blank || info[j].comment)) j++;
+  if (j >= lines.length) return [];
+  const dashIndent = info[j].indent;
+  const items = []; let cur = null; let ded = 0;
+  for (; j < lines.length; j++) {
+    const o = info[j];
+    if (o.blank) { if (cur) cur.push(lines[j]); continue; }
+    if (o.comment && o.indent <= dashIndent) continue;
+    if (o.indent === dashIndent && o.dash && /^-(\s|$)/.test(lines[j].t.slice(dashIndent))) {
+      ded = o.keyIndent;
+      cur = [{ t: lines[j].t.slice(ded), n: lines[j].n }];
+      items.push(cur);
+      continue;
+    }
+    if (o.indent > dashIndent && cur) {
+      cur.push({ t: lines[j].t.slice(Math.min(ded, o.indent)), n: lines[j].n });
+      continue;
+    }
+    break;
+  }
+  return items.map(trimBlank).filter(hasContent);
+}
+function docMeta(lines) {
+  const info = analyze(texts(lines));
+  const top = k => info.find(o => o.key === k && o.path.length === 0 && !o.inScalar);
+  const inMeta = k => info.find(o => o.key === k && o.path.length === 1 && o.path[0] === 'metadata' && !o.inScalar);
+  const g = o => (o ? splitValue(o.val).val : '');
+  return {
+    kind: g(top('kind')), apiVersion: g(top('apiVersion')),
+    name: g(inMeta('name')), namespace: g(inMeta('namespace')),
+    owned: info.some(o => o.key === 'ownerReferences' && last(o.path) === 'metadata'),
+    secretType: g(top('type'))
+  };
+}
+
+/* ------------------------------------------------------------------- passes */
+function shouldDrop(meta, cfg, dropKinds) {
+  if (dropKinds.has(meta.kind)) return `Kind ${meta.kind} is cloud-specific or not portable`;
+  if (cfg.convertOpenShift) {
+    if (OCP_DROP.includes(meta.kind) && /\.openshift\.io\//.test(meta.apiVersion || '')) return `OpenShift-only ${meta.kind} has no VKS equivalent`;
+    if (meta.kind === 'ServiceAccount' && ['builder', 'deployer'].includes(meta.name)) return 'OpenShift auto-created ServiceAccount';
+    if (meta.kind === 'RoleBinding' && /^system:(image-pullers|image-builders|deployers)$/.test(meta.name)) return 'OpenShift auto-created RoleBinding';
+    if (meta.kind === 'Secret' && /-dockercfg(-[a-z0-9]+)?$/.test(meta.name)) return 'OpenShift auto-generated registry Secret';
+  }
+  if (cfg.dropGenerated) {
+    if (['Pod', 'ReplicaSet', 'Job'].includes(meta.kind) && meta.owned) return 'Generated by a controller (ownerReferences present)';
+    if (meta.kind === 'ConfigMap' && ['kube-root-ca.crt', 'openshift-service-ca.crt'].includes(meta.name)) return 'Auto-generated ConfigMap';
+    if (meta.kind === 'Secret' && /service-account-token|helm\.sh\/release/.test(meta.secretType)) return `Auto-generated Secret (${meta.secretType})`;
+    if (meta.kind === 'Service' && meta.name === 'kubernetes' && meta.namespace === 'default') return 'Built-in kubernetes Service';
+  }
+  return null;
+}
+
+function passRuntime(lines, meta, ctx) {
+  const info = analyze(texts(lines));
+  const rm = new Set(); const names = new Set();
+  const META_KEYS = ['uid', 'resourceVersion', 'selfLink', 'generation', 'managedFields', 'ownerReferences', 'creationTimestamp'];
+  for (const o of info) {
+    if (!o.key || o.inScalar || o.dash || rm.has(o.i)) continue;
+    const parent = last(o.path);
+    let why = null;
+    if (o.key === 'status' && (o.path.length === 0 || parent === 'volumeClaimTemplates')) why = 'status';
+    else if (parent === 'metadata' && META_KEYS.includes(o.key)) why = 'metadata.' + o.key;
+    else if (meta.kind === 'Service' && o.path.join('.') === 'spec' && (o.key === 'clusterIP' || o.key === 'clusterIPs')) why = o.key;
+    else if (meta.kind === 'PersistentVolumeClaim' && o.path.join('.') === 'spec' && o.key === 'volumeName') why = 'spec.volumeName';
+    else if (meta.kind === 'ServiceAccount' && o.path.length === 0 && o.key === 'secrets') why = 'secrets (token refs)';
+    if (why) {
+      const end = blockEnd(info, o.i);
+      for (let j = o.i; j <= end; j++) rm.add(j);
+      names.add(why);
+    }
+  }
+  if (rm.size) {
+    ctx.add({ level: 'fixed', rule: 'Strip runtime fields', line: lines[0].n, msg: `Removed ${names.size} field type(s): ${[...names].join(', ')}` });
+    ctx.stats.runtime += names.size;
+  }
+  return lines.filter((_, i) => !rm.has(i));
+}
+
+function passMapEntries(lines, parentKey, rules, ctx, label, needMetadataParent) {
+  if (!rules.length) return lines;
+  const info = analyze(texts(lines));
+  const rm = new Set(); const rep = new Map();
+  for (const o of info) {
+    if (o.key !== parentKey || o.inScalar || o.val !== '' || rm.has(o.i)) continue;
+    if (needMetadataParent && last(o.path) !== 'metadata') continue;
+    const end = blockEnd(info, o.i);
+    const kids = []; let ck = null;
+    for (let j = o.i + 1; j <= end; j++) {
+      const x = info[j];
+      if (x.blank || x.comment || x.inScalar) continue;
+      if (ck === null) ck = x.keyIndent;
+      if (x.key !== null && x.keyIndent === ck && !x.dash) kids.push(x);
+    }
+    if (!kids.length) continue;
+    let removed = 0;
+    kids.forEach((k, idx) => {
+      const sv = splitValue(k.val).val;
+      const hit = rules.find(r => r.re.test(k.key) && (!r.valueRe || r.valueRe.test(sv)));
+      if (!hit) return;
+      const stop = idx + 1 < kids.length ? kids[idx + 1].i - 1 : end;
+      for (let j = k.i; j <= stop; j++) rm.add(j);
+      removed++;
+      ctx.add({ level: 'fixed', rule: label, line: lines[k.i].n, before: (k.key + ': ' + (BLOCK_SCALAR_RE.test(k.val) ? '|…' : sv)).trim(), after: '(removed)' });
+      ctx.stats[parentKey === 'annotations' ? 'annotations' : 'nodeSelectors']++;
+      if (parentKey === 'annotations') {
+        const aw = ANN_WARN.find(x => x[0].test(k.key));
+        if (aw) ctx.add({ level: 'warn', rule: 'OpenShift', line: lines[k.i].n, msg: aw[1] });
+      }
+      if (k.key === 'kubernetes.io/ingress.class') {
+        ctx.add({ level: 'warn', rule: 'Ingress class', line: lines[k.i].n, msg: `Class "${sv}" does not exist on VKS. Set spec.ingressClassName to your ingress controller (Contour / NGINX / Avi AKO).` });
+      }
+    });
+    if (removed === kids.length) {
+      if (!o.dash) { for (let j = o.i; j <= end; j++) rm.add(j); }
+      else { rep.set(o.i, lines[o.i].t.replace(/:\s*$/, ': {}')); for (let j = o.i + 1; j <= end; j++) rm.add(j); }
+    }
+  }
+  const out = [];
+  lines.forEach((l, i) => { if (rm.has(i)) return; out.push(rep.has(i) ? { t: rep.get(i), n: l.n } : l); });
+  return out;
+}
+
+/* -------- images */
+function parseImage(ref) {
+  let digest = '', tag = '', rest = ref;
+  const at = rest.indexOf('@');
+  if (at >= 0) { digest = rest.slice(at); rest = rest.slice(0, at); }
+  const slash = rest.lastIndexOf('/');
+  const colon = rest.indexOf(':', slash + 1);
+  if (colon >= 0) { tag = rest.slice(colon); rest = rest.slice(0, colon); }
+  const parts = rest.split('/');
+  let host = '', path = rest;
+  if (parts.length > 1 && (parts[0].includes('.') || parts[0].includes(':') || parts[0] === 'localhost')) {
+    host = parts[0]; path = parts.slice(1).join('/');
+  }
+  return { host, path, tag, digest };
+}
+function makeImageRewriter(cfg) {
+  const th = cfg.targetHost.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  const proj = cfg.targetProject.trim().replace(/^\/+|\/+$/g, '');
+  const excl = parseLines(cfg.excludeRegistries).map(globToRegex);
+  const over = parseMap(cfg.registryMap, '=>').map(([g, t]) => [globToRegex(g), t.replace(/^https?:\/\//i, '').replace(/\/+$/, '')]);
+  const defBase = th ? th + (proj ? '/' + proj : '') : '';
+  return function (ref) {
+    if (/\$|\{\{/.test(ref)) return { skip: true, templated: true };
+    if (!defBase && !over.length) return { skip: true };
+    const p = parseImage(ref);
+    let host = p.host, path = p.path;
+    if (!host) {
+      if (!cfg.rewriteDockerHub) return { skip: true };
+      host = 'docker.io';
+      if (!path.includes('/') && cfg.libraryPrefix) path = 'library/' + path;
+    } else if (host === 'index.docker.io' || host === 'registry-1.docker.io') host = 'docker.io';
+    if (th && host.toLowerCase() === th.toLowerCase()) return { skip: true };
+    if (excl.some(r => r.test(host))) return { skip: true };
+    let base = null;
+    for (const [re, t] of over) if (re.test(host)) { base = t; break; }
+    if (base === null) base = defBase;
+    if (!base) return { skip: true };
+    if (cfg.pathMode === 'flatten') path = last(path.split('/'));
+    return { out: base + '/' + path + p.tag + p.digest, src: host + '/' + path + p.tag + p.digest, p, dstBase: base, dstPath: path };
+  };
+}
+function passImages(lines, rewrite, cfg, ctx) {
+  const info = analyze(texts(lines));
+  const out = lines.slice();
+  for (const o of info) {
+    if (o.key !== 'image' || o.inScalar || !o.val) continue;
+    const sv = splitValue(o.val);
+    if (!sv.val) continue;
+    const r = rewrite(sv.val);
+    if (r.templated) { ctx.add({ level: 'warn', rule: 'Image', line: lines[o.i].n, msg: `Templated image reference left untouched: ${sv.val}` }); continue; }
+    if (r.skip || r.out === sv.val) continue;
+    let trail = sv.trail;
+    if (cfg.addComment && !trail.trim()) trail = ' # was: ' + sv.val;
+    out[o.i] = { t: head(lines[o.i].t) + sv.quote + r.out + sv.quote + trail, n: lines[o.i].n };
+    ctx.add({ level: 'fixed', rule: 'Image registry', line: lines[o.i].n, before: sv.val, after: r.out });
+    ctx.stats.images++;
+    // mirror entry: digest-only destinations cannot carry a digest, so use tag (or short digest)
+    const p = r.p; let dst = r.dstBase + '/' + r.dstPath + p.tag + p.digest;
+    let dstCopy = dst;
+    if (p.digest) dstCopy = r.dstBase + '/' + r.dstPath + (p.tag || ':' + p.digest.slice(8, 20));
+    ctx.images.set(r.src, { dst, dstCopy });
+  }
+  return out;
+}
+
+/* -------- API versions */
+const WORKLOADS = ['Deployment', 'DaemonSet', 'ReplicaSet', 'StatefulSet'];
+const API_RULES = [
+  { from: ['extensions/v1beta1', 'networking.k8s.io/v1beta1'], kinds: ['Ingress'], to: 'networking.k8s.io/v1', fix: 'ingress' },
+  { from: ['extensions/v1beta1', 'apps/v1beta1', 'apps/v1beta2'], kinds: WORKLOADS, to: 'apps/v1', fix: 'workload' },
+  { from: ['extensions/v1beta1'], kinds: ['NetworkPolicy'], to: 'networking.k8s.io/v1' },
+  { from: ['batch/v1beta1', 'batch/v2alpha1'], kinds: ['CronJob'], to: 'batch/v1' },
+  { from: ['policy/v1beta1'], kinds: ['PodDisruptionBudget'], to: 'policy/v1' },
+  { from: ['autoscaling/v2beta1'], kinds: ['HorizontalPodAutoscaler'], to: 'autoscaling/v2', fix: 'hpa1' },
+  { from: ['autoscaling/v2beta2'], kinds: ['HorizontalPodAutoscaler'], to: 'autoscaling/v2' },
+  { from: ['rbac.authorization.k8s.io/v1beta1', 'rbac.authorization.k8s.io/v1alpha1'], kinds: ['Role', 'RoleBinding', 'ClusterRole', 'ClusterRoleBinding'], to: 'rbac.authorization.k8s.io/v1' },
+  { from: ['storage.k8s.io/v1beta1'], kinds: ['StorageClass', 'CSIDriver', 'CSINode', 'VolumeAttachment'], to: 'storage.k8s.io/v1' },
+  { from: ['scheduling.k8s.io/v1beta1', 'scheduling.k8s.io/v1alpha1'], kinds: ['PriorityClass'], to: 'scheduling.k8s.io/v1' },
+  { from: ['coordination.k8s.io/v1beta1'], kinds: ['Lease'], to: 'coordination.k8s.io/v1' },
+  { from: ['node.k8s.io/v1beta1', 'node.k8s.io/v1alpha1'], kinds: ['RuntimeClass'], to: 'node.k8s.io/v1' },
+  { from: ['certificates.k8s.io/v1beta1'], kinds: ['CertificateSigningRequest'], to: 'certificates.k8s.io/v1', fix: 'manual', note: 'v1 requires spec.signerName' },
+  { from: ['admissionregistration.k8s.io/v1beta1'], kinds: ['ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration'], to: 'admissionregistration.k8s.io/v1', fix: 'manual', note: 'v1 requires sideEffects, admissionReviewVersions and a structural schema' },
+  { from: ['apiextensions.k8s.io/v1beta1'], kinds: ['CustomResourceDefinition'], to: 'apiextensions.k8s.io/v1', fix: 'manual', note: 'v1 requires spec.versions[].schema (structural schema)' }
+];
+
+function ingressUpgrade(lines, ctx) {
+  const info = analyze(texts(lines));
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const o = info[i], n = lines[i].n;
+    if (!o.inScalar && o.key === 'backend' && o.path.length === 1 && o.path[0] === 'spec') {
+      out.push({ t: lines[i].t.replace(/\bbackend(\s*:)/, 'defaultBackend$1'), n });
+      ctx.add({ level: 'fixed', rule: 'Ingress v1', line: n, before: 'spec.backend', after: 'spec.defaultBackend' });
+      continue;
+    }
+    if (!o.inScalar && o.key === 'serviceName' && !o.dash) {
+      const ind = ' '.repeat(o.keyIndent);
+      out.push({ t: ind + 'service:', n });
+      out.push({ t: ind + '  name: ' + o.val, n });
+      let j = i + 1;
+      while (j < lines.length && info[j].blank) j++;
+      const nx = info[j];
+      if (nx && nx.key === 'servicePort' && !nx.dash && nx.keyIndent === o.keyIndent) {
+        const raw = splitValue(nx.val);
+        const isNum = /^\d+$/.test(raw.val) && !raw.quote;
+        out.push({ t: ind + '  port:', n: lines[j].n });
+        out.push({ t: ind + '    ' + (isNum ? 'number: ' : 'name: ') + nx.val, n: lines[j].n });
+        i = j;
+      } else {
+        ctx.add({ level: 'warn', rule: 'Ingress v1', line: n, msg: 'serviceName without adjacent servicePort — set service.port manually' });
+      }
+      ctx.add({ level: 'fixed', rule: 'Ingress v1', line: n, before: 'serviceName/servicePort', after: 'service.name / service.port' });
+      continue;
+    }
+    out.push(lines[i]);
+    if (!o.inScalar && o.key === 'path' && last(o.path) === 'paths') {
+      const [s, e] = itemRange(info, i);
+      let has = false;
+      for (let j = s; j <= e; j++) if (info[j].key === 'pathType' && info[j].keyIndent === o.keyIndent) has = true;
+      if (!has) {
+        out.push({ t: ' '.repeat(o.keyIndent) + 'pathType: ImplementationSpecific', n });
+        ctx.add({ level: 'fixed', rule: 'Ingress v1', line: n, before: '(no pathType)', after: 'pathType: ImplementationSpecific' });
+        ctx.add({ level: 'info', rule: 'Ingress v1', line: n, msg: 'pathType defaulted to ImplementationSpecific — use Prefix/Exact if you need strict matching.' });
+      }
+    }
+  }
+  return out;
+}
+function hpa1Upgrade(lines, ctx) {
+  const info = analyze(texts(lines));
+  const out = []; let warned = false;
+  for (let i = 0; i < lines.length; i++) {
+    const o = info[i], n = lines[i].n;
+    if (o.key && !o.inScalar && last(o.path) === 'resource' && /^target(AverageUtilization|AverageValue)$/.test(o.key)) {
+      const ind = ' '.repeat(o.keyIndent);
+      out.push({ t: ind + 'target:', n });
+      if (o.key === 'targetAverageUtilization') { out.push({ t: ind + '  type: Utilization', n }); out.push({ t: ind + '  averageUtilization: ' + o.val, n }); }
+      else { out.push({ t: ind + '  type: AverageValue', n }); out.push({ t: ind + '  averageValue: ' + o.val, n }); }
+      ctx.add({ level: 'fixed', rule: 'HPA v2', line: n, before: o.key + ': ' + o.val, after: 'target.' + (o.key === 'targetAverageUtilization' ? 'averageUtilization' : 'averageValue') });
+      continue;
+    }
+    if (!warned && o.key && !o.inScalar && /^target|^metricName$/.test(o.key) && ['pods', 'object', 'external', 'containerResource'].includes(last(o.path))) {
+      warned = true;
+      ctx.add({ level: 'warn', rule: 'HPA v2', line: n, msg: 'Pods/Object/External metrics use a different schema in autoscaling/v2 (metric.name, target.type/value). Convert manually.' });
+    }
+    out.push(lines[i]);
+  }
+  return out;
+}
+function passApi(lines, meta, ctx) {
+  const info = analyze(texts(lines));
+  const aL = info.find(o => o.key === 'apiVersion' && o.path.length === 0);
+  if (!aL) return lines;
+  const cur = splitValue(aL.val).val;
+  const rule = API_RULES.find(r => r.from.includes(cur) && r.kinds.includes(meta.kind));
+  if (!rule) return lines;
+  let out = lines.slice();
+  out[aL.i] = { t: lines[aL.i].t.replace(cur, rule.to), n: lines[aL.i].n };
+  ctx.add({ level: 'fixed', rule: 'Deprecated API', line: lines[aL.i].n, before: cur, after: rule.to });
+  ctx.stats.apis++;
+  if (rule.fix === 'ingress') out = ingressUpgrade(out, ctx);
+  if (rule.fix === 'hpa1') out = hpa1Upgrade(out, ctx);
+  if (rule.fix === 'manual') ctx.add({ level: 'warn', rule: 'Deprecated API', line: lines[aL.i].n, msg: rule.note + ' — review manually.' });
+  if (rule.fix === 'workload') {
+    const i2 = analyze(texts(out));
+    if (!i2.some(o => o.key === 'selector' && o.path.join('.') === 'spec'))
+      ctx.add({ level: 'warn', rule: 'Deprecated API', line: lines[aL.i].n, msg: 'apps/v1 requires spec.selector.matchLabels — add it (must match template labels).' });
+  }
+  return out;
+}
+
+/* -------- namespace / storage */
+function passNamespace(lines, cfg, meta, ctx) {
+  const target = cfg.targetNamespace.trim();
+  if (!target) return lines;
+  const info = analyze(texts(lines)); const out = lines.slice();
+  for (const o of info) {
+    if (!o.key || o.inScalar) continue;
+    const isNs = o.key === 'namespace' && (last(o.path) === 'metadata' || last(o.path) === 'subjects');
+    const isNsName = meta.kind === 'Namespace' && o.key === 'name' && o.path.join('.') === 'metadata';
+    if (!isNs && !isNsName) continue;
+    const sv = splitValue(o.val);
+    if (!sv.val || sv.val === target) continue;
+    out[o.i] = { t: head(lines[o.i].t) + sv.quote + target + sv.quote + sv.trail, n: lines[o.i].n };
+    ctx.add({ level: 'fixed', rule: 'Namespace', line: lines[o.i].n, before: sv.val, after: target });
+  }
+  return out;
+}
+function passStorage(lines, cfg, ctx) {
+  const map = new Map(parseMap(cfg.storageMap, '='));
+  const def = cfg.storageClass.trim();
+  if (!def && !map.size) return lines;
+  const info = analyze(texts(lines)); const out = lines.slice();
+  for (const o of info) {
+    if (o.key !== 'storageClassName' || o.inScalar || !o.val) continue;
+    const sv = splitValue(o.val);
+    if (!sv.val || sv.val === 'null') continue;
+    const neu = map.has(sv.val) ? map.get(sv.val) : (def || null);
+    if (!neu || neu === sv.val) continue;
+    out[o.i] = { t: head(lines[o.i].t) + sv.quote + neu + sv.quote + sv.trail, n: lines[o.i].n };
+    ctx.add({ level: 'fixed', rule: 'StorageClass', line: lines[o.i].n, before: sv.val, after: neu });
+    ctx.stats.storage++;
+  }
+  return out;
+}
+
+/* -------- review flags + leftovers (read-only) */
+const LEFTOVERS = [
+  /amazonaws\.com/i, /\.azurecr\.io/i, /\bgcr\.io\b/i, /pkg\.dev/i, /googleapis\.com/i,
+  /eks\.amazonaws/i, /kubernetes\.azure\.com/i, /cloud\.google\.com/i, /\bgke\.io\b/i, /openshift\.io/i,
+  /\bebs\.csi\.aws\.com\b/i, /\bdisk\.csi\.azure\.com\b/i, /\bpd\.csi\.storage\.gke\.io\b/i
+];
+function passFlags(lines, meta, cfg, ctx) {
+  const info = analyze(texts(lines));
+  const at = o => lines[o.i].n;
+  const L0 = lines[0].n;
+  if (meta.kind === 'Secret') ctx.add({ level: 'warn', rule: 'Secret', line: L0, msg: meta.secretType.includes('dockerconfig') ? 'Registry pull secret — re-create it with Harbor credentials.' : 'Values are copied as-is. Re-provision from Vault / External Secrets if they reference cloud resources.' });
+  if (/\.openshift\.io\//.test(meta.apiVersion || '') || ['Route', 'DeploymentConfig', 'ImageStream', 'BuildConfig'].includes(meta.kind))
+    ctx.add({ level: 'warn', rule: 'OpenShift', line: L0, msg: `${meta.kind} (${meta.apiVersion || '?'}) is OpenShift-only and was not converted — ` + (cfg.convertOpenShift ? 'no automatic conversion exists, rewrite it manually.' : 'enable "Convert OpenShift resources" or rewrite it manually.') });
+  if (meta.kind === 'Ingress') ctx.add({ level: 'info', rule: 'Ingress', line: L0, msg: 'Verify an ingress controller exists on VKS and the host/TLS secret are valid.' });
+  for (const o of info) {
+    if (!o.key || o.inScalar) continue;
+    if (o.key === 'type' && meta.kind === 'Service' && o.path.join('.') === 'spec' && splitValue(o.val).val === 'LoadBalancer')
+      ctx.add({ level: 'warn', rule: 'LoadBalancer', line: at(o), msg: 'Service type LoadBalancer — on VKS this is served by NSX / Avi. Check VIP pool, sizing and any loadBalancerIP.' });
+    if (o.key === 'loadBalancerIP' || o.key === 'loadBalancerSourceRanges')
+      ctx.add({ level: 'warn', rule: 'LoadBalancer', line: at(o), msg: `${o.key} is set — verify it is valid in the VKS network.` });
+    if (/^ReadWriteMany$/.test(splitValue(o.val).val) || (o.key === '' ))
+      ;
+    if (o.dash === false && o.key === 'hostPath') ctx.add({ level: 'warn', rule: 'Volume', line: at(o), msg: 'hostPath volume — node paths differ on VKS nodes (and may violate Pod Security).' });
+    if (o.key === 'runAsUser' && /^\d{10,}$/.test(splitValue(o.val).val))
+      ctx.add({ level: 'info', rule: 'OpenShift SCC', line: at(o), msg: `runAsUser ${splitValue(o.val).val} comes from an OpenShift SCC UID range — check that the image and volumes work with this UID on VKS, or remove it.` });
+    if (o.key === 'privileged' && splitValue(o.val).val === 'true') ctx.add({ level: 'warn', rule: 'Pod Security', line: at(o), msg: 'privileged container — check the namespace Pod Security level on VKS.' });
+    if (o.key === 'hostNetwork' && splitValue(o.val).val === 'true') ctx.add({ level: 'warn', rule: 'Pod Security', line: at(o), msg: 'hostNetwork: true — check Pod Security and network policy on VKS.' });
+  }
+  // RWX (list items are not keys)
+  lines.forEach((l, i) => {
+    if (info[i].inScalar) return;
+    if (/^\s*-\s*ReadWriteMany\s*$/.test(l.t)) ctx.add({ level: 'warn', rule: 'PVC', line: l.n, msg: 'ReadWriteMany needs vSAN File Services / NFS-backed StorageClass on VKS (vSAN block is RWO).' });
+  });
+  if (cfg.scanLeftovers) {
+    lines.forEach((l, i) => {
+      if (info[i].comment) return;
+      const hit = LEFTOVERS.find(re => re.test(l.t));
+      if (hit) ctx.add({ level: 'warn', rule: 'Leftover cloud reference', line: l.n, msg: l.t.trim().slice(0, 140) });
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ driver */
+function processDoc(d, cfg, R, ctx) {
+  ctx.stats.docsIn++;
+  let lines = trimBlank(d);
+  let meta = docMeta(lines);
+  ctx.cur.doc =(meta.kind || '(no kind)') + (meta.name ? '/' + meta.name : '');
+  const why = shouldDrop(meta, cfg, R.drop);
+  if (why) { ctx.add({ level: 'fixed', rule: 'Drop resource', line: lines[0].n, msg: why }); ctx.stats.dropped++; return { dropped: why, meta }; }
+  let extra = [], skipAnn = false;
+  if (cfg.convertOpenShift) {
+    const o = passOpenShift(lines, meta, cfg, ctx);
+    if (o.changed) { lines = o.lines; extra = o.extra || []; skipAnn = !!o.skipAnn; meta = docMeta(lines); }
+    lines = passOpenShiftCommon(lines, meta, ctx);
+  }
+  if (cfg.upgradeApis) lines = passApi(lines, meta, ctx);
+  if (cfg.stripRuntime) lines = passRuntime(lines, meta, ctx);
+  if (cfg.stripAnnotations && !skipAnn) lines = passMapEntries(lines, 'annotations', R.ann, ctx, 'Remove annotation', true);
+  if (cfg.stripNodeSelectors) lines = passMapEntries(lines, 'nodeSelector', R.ns, ctx, 'Remove nodeSelector', false);
+  lines = passImages(lines, R.img, cfg, ctx);
+  lines = passStorage(lines, cfg, ctx);
+  lines = passNamespace(lines, cfg, meta, ctx);
+  passFlags(lines, meta, cfg, ctx);
+  ctx.stats.docsOut++;
+  return { lines, meta, extra };
+}
+
+function convert(files, userCfg) {
+  const cfg = Object.assign({}, DEFAULT_CONFIG, userCfg || {});
+  const ctx = {
+    log: [], images: new Map(), cur: { file: '', doc: '' },
+    stats: { docsIn: 0, docsOut: 0, dropped: 0, images: 0, annotations: 0, nodeSelectors: 0, apis: 0, runtime: 0, storage: 0, ocp: 0 }
+  };
+  ctx.add = e => ctx.log.push(Object.assign({ file: ctx.cur.file, doc: ctx.cur.doc, idx: ctx.cur.idx }, e));
+  const R = {
+    ann: parseRules(cfg.annotationRules), ns: parseRules(cfg.nodeSelectorRules),
+    drop: new Set(parseLines(cfg.dropKinds)), img: makeImageRewriter(cfg)
+  };
+  const outFiles = [];
+  for (const f of files) {
+    ctx.cur.file = f.name; ctx.cur.doc = '';
+    const t = String(f.text).replace(/^\uFEFF/, '');
+    if (/^\s*[\[{]/.test(t)) { ctx.add({ level: 'error', rule: 'Input', msg: 'JSON input is not supported — export with "-o yaml".' }); continue; }
+    const docs = [];
+    for (const d of splitDocs(t)) { const u = unwrapList(d); if (u === null) docs.push(d); else u.forEach(x => docs.push(x)); }
+    const chunks = []; const inventory = [];
+    for (const d of docs) {
+      const l0 = ctx.log.length;
+      ctx.cur.idx = inventory.length;
+      const r = processDoc(d, cfg, R, ctx);
+      const slice = ctx.log.slice(l0);
+      const cnt = lv => slice.filter(e => e.level === lv).length;
+      inventory.push({
+        idx: inventory.length, kind: r.meta.kind || '(no kind)', name: r.meta.name, namespace: r.meta.namespace,
+        apiVersion: r.meta.apiVersion, dropped: !!r.dropped, reason: r.dropped || '',
+        fixed: cnt('fixed'), warn: cnt('warn'), error: cnt('error'), info: cnt('info')
+      });
+      if (!r.dropped) {
+        chunks.push(trimBlank(r.lines).map(l => l.t).join('\n'));
+        (r.extra || []).forEach(x => {
+          const m = docMeta(x);
+          chunks.push(trimBlank(x).map(l => l.t).join('\n'));
+          inventory.push({ idx: inventory.length, kind: m.kind, name: m.name, namespace: m.namespace, apiVersion: m.apiVersion, dropped: false, reason: '', generated: true, fixed: 0, warn: 0, error: 0, info: 0 });
+          ctx.stats.docsOut++;
+        });
+      }
+    }
+    outFiles.push({ name: f.name, text: chunks.length ? chunks.join('\n---\n') + '\n' : '', docs: chunks.length, inventory });
+  }
+  const images = [...ctx.images.entries()].map(([src, v]) => ({ src, dst: v.dst, dstCopy: v.dstCopy }));
+  return { files: outFiles, log: ctx.log, images, stats: ctx.stats, cfg };
+}
+
+function mirrorScript(images) {
+  const q = s => "'" + s.replace(/'/g, "'\\''") + "'";
+  const out = [
+    '#!/usr/bin/env bash',
+    '# Mirror images referenced by the converted manifests into the on-prem registry.',
+    '# Requires: skopeo, network access to both registries, and `skopeo login <target-registry>`.',
+    '# Optional: SKOPEO_EXTRA="--dest-tls-verify=false" for self-signed registries.',
+    'set -euo pipefail',
+    'SKOPEO_EXTRA="${SKOPEO_EXTRA:-}"',
+    'copy() { echo "==> $1 -> $2"; skopeo copy --all --retry-times 3 $SKOPEO_EXTRA "docker://$1" "docker://$2"; }',
+    ''
+  ];
+  images.forEach(i => out.push(`copy ${q(i.src)} ${q(i.dstCopy)}` + (i.dst !== i.dstCopy ? '   # digest-pinned: digest is preserved by skopeo' : '')));
+  return out.join('\n') + '\n';
+}
+function imageCsv(images) {
+  return 'source,target\n' + images.map(i => `"${i.src}","${i.dst}"`).join('\n') + '\n';
+}
+function reportMd(res) {
+  const s = res.stats;
+  const out = ['# VKS migration report', '',
+    `- Documents in / out: ${s.docsIn} / ${s.docsOut} (dropped ${s.dropped})`,
+    `- Images rewritten: ${s.images}`, `- Annotations removed: ${s.annotations}`, `- nodeSelector entries removed: ${s.nodeSelectors}`,
+    `- API versions upgraded: ${s.apis}`, `- StorageClass remapped: ${s.storage}`, '',
+    '## Items needing review', ''];
+  const rev = res.log.filter(e => e.level === 'warn' || e.level === 'error');
+  if (!rev.length) out.push('_None_');
+  rev.forEach(e => out.push(`- [${e.level.toUpperCase()}] ${e.file} · ${e.doc || '-'} · line ${e.line || '-'} · ${e.rule}: ${e.msg || ''}`));
+  out.push('', '## All changes', '');
+  res.log.filter(e => e.level === 'fixed').forEach(e => out.push(`- ${e.file} · ${e.doc} · line ${e.line || '-'} · ${e.rule}: ${e.before !== undefined ? e.before + ' → ' + e.after : (e.msg || '')}`));
+  return out.join('\n') + '\n';
+}
+
+/* ------------------------------------------------------------ OpenShift conversion */
+const ANN_WARN = [
+  [/openshift\.io\/serving-cert-secret-name$/, 'Service serving certificates (OpenShift service CA) do not exist on VKS — issue the TLS secret with cert-manager or your PKI.'],
+  [/openshift\.io\/inject-cabundle$/, 'Service CA bundle injection (OpenShift) is not available on VKS — mount the CA bundle yourself.']
+];
+const OCP_DROP = ['ImageStream', 'ImageStreamTag', 'ImageStreamImage', 'ImageTag', 'BuildConfig', 'Build', 'SecurityContextConstraints'];
+const pk = a => a.join('.');
+
+// Read a scalar either from "key: value" or from a flow map on the parent line ("to: {kind: Service, name: web}").
+// Returns null when the field is absent, '' for a block value.
+function field(info, path, key) {
+  const direct = info.find(o => o.key === key && !o.inScalar && pk(o.path) === pk(path));
+  if (direct) return splitValue(direct.val).val;
+  if (path.length) {
+    const par = info.find(o => o.key === path[path.length - 1] && !o.inScalar && pk(o.path) === pk(path.slice(0, -1)));
+    if (par && /^\{/.test(par.val)) {
+      const m = new RegExp('[{,]\\s*' + key + '\\s*:\\s*("[^"]*"|\'[^\']*\'|[^,}]+)').exec(par.val);
+      if (m) return unquote(m[1].trim());
+    }
+  }
+  return null;
+}
+function blockLines(lines, o, end, newIndent) {
+  const out = [];
+  for (let j = o.i; j <= end; j++) { const t = lines[j].t; out.push(t.trim() === '' ? '' : ' '.repeat(newIndent) + t.slice(o.indent)); }
+  return out;
+}
+function scalarText(lines, info, o) {
+  if (!o || !BLOCK_SCALAR_RE.test(o.val)) return null;
+  const body = []; let j = o.i + 1;
+  while (j < lines.length && (info[j].blank || info[j].inScalar)) { body.push(lines[j].t); j++; }
+  while (body.length && !body[body.length - 1].trim()) body.pop();
+  if (!body.length) return [];
+  const ind = Math.min(...body.filter(s => s.trim()).map(s => /^\s*/.exec(s)[0].length));
+  return body.map(s => s.trim() ? s.slice(ind) : '');
+}
+// Remove key blocks selected by pred(); a parent left without children becomes "{}".
+function dropKeys(lines, pred, ctx, rule) {
+  const info = analyze(texts(lines)); const rm = new Set(); const hits = [];
+  info.forEach(o => {
+    if (!o.key || o.inScalar || o.dash || rm.has(o.i) || !pred(o)) return;
+    const end = blockEnd(info, o.i);
+    for (let j = o.i; j <= end; j++) rm.add(j);
+    hits.push(o);
+  });
+  if (!hits.length) return lines;
+  const rep = new Map();
+  hits.forEach(o => {
+    let p = -1;
+    for (let j = o.i - 1; j >= 0; j--) {
+      const x = info[j];
+      if (x.blank || x.comment || x.inScalar) continue;
+      if (x.key !== null && x.keyIndent < o.keyIndent) { p = j; break; }
+    }
+    if (p < 0 || info[p].val !== '') return;
+    const pend = blockEnd(info, p); let left = false;
+    for (let j = p + 1; j <= pend; j++) { const x = info[j]; if (!rm.has(j) && !x.blank && !x.comment && !x.inScalar) { left = true; break; } }
+    if (!left) rep.set(p, lines[p].t.replace(/:\s*$/, ': {}'));
+  });
+  hits.forEach(o => ctx.add({ level: 'fixed', rule, line: lines[o.i].n, before: o.key + ': …', after: '(removed)' }));
+  const out = [];
+  lines.forEach((l, i) => { if (rm.has(i)) return; out.push(rep.has(i) ? { t: rep.get(i), n: l.n } : l); });
+  return out;
+}
+function dropDockercfgPullSecrets(lines, ctx) {
+  const info = analyze(texts(lines));
+  const ips = info.find(o => o.key === 'imagePullSecrets' && !o.inScalar && !o.dash && o.path.length === 0);
+  if (!ips) return lines;
+  const end = blockEnd(info, ips.i), rm = new Set(); let total = 0, gone = 0;
+  for (let j = ips.i + 1; j <= end; j++) {
+    const o = info[j];
+    if (o.dash && o.key === 'name') { total++; if (/-dockercfg-[a-z0-9]+$/.test(splitValue(o.val).val)) { gone++; rm.add(j); } }
+  }
+  if (!gone) return lines;
+  if (gone === total) for (let j = ips.i; j <= end; j++) rm.add(j);
+  ctx.add({ level: 'fixed', rule: 'OpenShift pull secrets', line: lines[ips.i].n, before: 'imagePullSecrets: *-dockercfg-*', after: '(removed)' });
+  return lines.filter((_, i) => !rm.has(i));
+}
+function passOpenShiftCommon(lines, meta, ctx) {
+  let out = dropKeys(lines, o => o.key === 'seLinuxOptions', ctx, 'Remove OpenShift seLinuxOptions');
+  if (meta.kind === 'ServiceAccount') out = dropDockercfgPullSecrets(out, ctx);
+  return out;
+}
+function passOpenShift(lines, meta, cfg, ctx) {
+  const res = { lines, extra: [], skipAnn: false, changed: false };
+  const av = meta.apiVersion || '';
+  if (meta.kind === 'Route' && /^route\.openshift\.io\//.test(av)) return convertRoute(lines, meta, cfg, ctx, res);
+  if (meta.kind === 'DeploymentConfig' && /^apps\.openshift\.io\//.test(av)) { res.lines = convertDC(lines, ctx); res.changed = true; return res; }
+  if (meta.kind === 'Project' && /^project\.openshift\.io\//.test(av)) { res.lines = convertProject(lines, ctx); res.changed = true; return res; }
+  return res;
+}
+
+function convertProject(lines, ctx) {
+  const info = analyze(texts(lines)); const rm = new Set(); const c = lines.slice();
+  info.forEach(o => {
+    if (!o.key || o.inScalar || o.dash || o.path.length) return;
+    if (o.key === 'apiVersion') c[o.i] = { t: 'apiVersion: v1', n: c[o.i].n };
+    else if (o.key === 'kind') c[o.i] = { t: 'kind: Namespace', n: c[o.i].n };
+    else if (o.key === 'spec' || o.key === 'status') for (let j = o.i; j <= blockEnd(info, o.i); j++) rm.add(j);
+  });
+  ctx.add({ level: 'fixed', rule: 'OpenShift Project', line: lines[0].n, before: 'Project (project.openshift.io/v1)', after: 'Namespace (v1)' });
+  ctx.stats.ocp++;
+  return c.filter((_, i) => !rm.has(i));
+}
+
+function convertDC(lines, ctx) {
+  const L0 = lines[0].n; let cur = lines.slice();
+  const warnings = []; let hadImageTrigger = false;
+  const mk = arr => arr.map(t => ({ t, n: L0 }));
+  const q = v => /^\d+$/.test(v) ? v : JSON.stringify(v);
+  const step = fn => { const info = analyze(texts(cur)); const r = fn(info); if (r) cur = r; };
+
+  step(info => {                                    // header
+    const a = info.find(o => o.key === 'apiVersion' && !o.path.length), k = info.find(o => o.key === 'kind' && !o.path.length);
+    const c = cur.slice();
+    c[a.i] = { t: c[a.i].t.replace(/apps\.openshift\.io\/v1/, 'apps/v1'), n: c[a.i].n };
+    c[k.i] = { t: c[k.i].t.replace('DeploymentConfig', 'Deployment'), n: c[k.i].n };
+    return c;
+  });
+  step(info => {                                    // triggers / test
+    const rm = new Set();
+    info.forEach(o => {
+      if (!o.key || o.inScalar || o.dash || pk(o.path) !== 'spec' || (o.key !== 'triggers' && o.key !== 'test')) return;
+      const end = blockEnd(info, o.i);
+      if (o.key === 'triggers' && cur.slice(o.i, end + 1).some(l => /ImageChange/.test(l.t))) hadImageTrigger = true;
+      for (let j = o.i; j <= end; j++) rm.add(j);
+    });
+    return rm.size ? cur.filter((_, i) => !rm.has(i)) : null;
+  });
+  step(info => {                                    // strategy
+    const o = info.find(x => x.key === 'strategy' && !x.inScalar && !x.dash && pk(x.path) === 'spec');
+    if (!o) return null;
+    const end = blockEnd(info, o.i);
+    const type = field(info, ['spec', 'strategy'], 'type');
+    const surge = field(info, ['spec', 'strategy', 'rollingParams'], 'maxSurge');
+    const unav = field(info, ['spec', 'strategy', 'rollingParams'], 'maxUnavailable');
+    if (info.some(x => ['pre', 'mid', 'post'].includes(x.key) && x.path[0] === 'spec' && x.path[1] === 'strategy'))
+      warnings.push('Deployment strategy lifecycle hooks (pre/mid/post) have no Deployment equivalent — use init containers, Jobs or your pipeline.');
+    const ind = ' '.repeat(o.keyIndent); const gen = [];
+    if (!type) { /* empty strategy -> drop it */ }
+    else if (type === 'Recreate') gen.push(ind + 'strategy:', ind + '  type: Recreate');
+    else {
+      if (type === 'Custom') warnings.push('Custom deployment strategy was replaced by RollingUpdate.');
+      gen.push(ind + 'strategy:', ind + '  type: RollingUpdate');
+      const ru = [];
+      if (surge) ru.push(ind + '    maxSurge: ' + q(surge));
+      if (unav) ru.push(ind + '    maxUnavailable: ' + q(unav));
+      if (ru.length) gen.push(ind + '  rollingUpdate:', ...ru);
+    }
+    return [...cur.slice(0, o.i), ...mk(gen), ...cur.slice(end + 1)];
+  });
+  step(info => {                                    // selector map -> selector.matchLabels
+    const spec = info.find(o => o.key === 'spec' && !o.path.length && !o.inScalar);
+    if (!spec) return null;
+    const sel = info.find(o => o.key === 'selector' && !o.inScalar && !o.dash && pk(o.path) === 'spec');
+    if (sel && info.some(o => o.key === 'matchLabels' && pk(o.path) === 'spec.selector')) return null;
+    const ind = ' '.repeat(sel ? sel.keyIndent : 2);
+    if (sel && sel.val === '') {
+      const end = blockEnd(info, sel.i); const out = [cur[sel.i], { t: ind + '  matchLabels:', n: cur[sel.i].n }];
+      for (let j = sel.i + 1; j <= end; j++) out.push({ t: cur[j].t.trim() ? '  ' + cur[j].t : cur[j].t, n: cur[j].n });
+      ctx.add({ level: 'fixed', rule: 'OpenShift DeploymentConfig', line: L0, before: 'spec.selector (map)', after: 'spec.selector.matchLabels' });
+      return [...cur.slice(0, sel.i), ...out, ...cur.slice(end + 1)];
+    }
+    if (sel && /^\{\s*[^}\s]/.test(sel.val)) {
+      ctx.add({ level: 'fixed', rule: 'OpenShift DeploymentConfig', line: L0, before: 'spec.selector (map)', after: 'spec.selector.matchLabels' });
+      return [...cur.slice(0, sel.i), { t: ind + 'selector:', n: cur[sel.i].n }, { t: ind + '  matchLabels: ' + sel.val, n: cur[sel.i].n }, ...cur.slice(sel.i + 1)];
+    }
+    // no usable selector: derive from the pod template labels
+    const lab = info.find(o => o.key === 'labels' && !o.inScalar && pk(o.path) === 'spec.template.metadata');
+    if (!lab) { warnings.push('spec.selector is missing and no template labels were found — add spec.selector.matchLabels manually.'); return null; }
+    const kid = info.find(o => o.i > spec.i && o.key !== null && !o.inScalar && pk(o.path) === 'spec');
+    const si = kid ? kid.keyIndent : 2;
+    const labLines = blockLines(cur, lab, blockEnd(info, lab.i), si + 2);
+    labLines[0] = labLines[0].replace(/^(\s*)labels:/, '$1matchLabels:');
+    const base = sel ? cur.filter((_, i) => i < sel.i || i > blockEnd(info, sel.i)) : cur;
+    const at = base.findIndex(l => l === cur[spec.i]);
+    ctx.add({ level: 'fixed', rule: 'OpenShift DeploymentConfig', line: L0, before: '(no spec.selector)', after: 'spec.selector.matchLabels from template labels' });
+    return [...base.slice(0, at + 1), ...mk([' '.repeat(si) + 'selector:', ...labLines]), ...base.slice(at + 1)];
+  });
+
+  ctx.add({ level: 'fixed', rule: 'OpenShift DeploymentConfig', line: L0, before: 'DeploymentConfig (apps.openshift.io/v1)', after: 'Deployment (apps/v1)' });
+  ctx.stats.ocp++;
+  if (hadImageTrigger) ctx.add({ level: 'info', rule: 'OpenShift DeploymentConfig', line: L0, msg: 'ImageChange triggers were removed — roll out new images by updating the Deployment image (CI/CD or "kubectl set image").' });
+  warnings.forEach(m => ctx.add({ level: 'warn', rule: 'OpenShift DeploymentConfig', line: L0, msg: m }));
+  return cur;
+}
+
+function mapRouteAnnotation(k, v, flavor, set, W) {
+  const toSecs = x => {
+    const m = /^(\d+)(ms|s|m|h|d)?$/.exec(x.trim()); if (!m) return null;
+    const n = +m[1], u = m[2] || 'ms';
+    return u === 'ms' ? Math.ceil(n / 1000) : u === 's' ? n : u === 'm' ? n * 60 : u === 'h' ? n * 3600 : n * 86400;
+  };
+  if (k === 'haproxy.router.openshift.io/timeout') {
+    const s = toSecs(v);
+    if (s != null && flavor === 'nginx') { set.push(['nginx.ingress.kubernetes.io/proxy-read-timeout', String(s)], ['nginx.ingress.kubernetes.io/proxy-send-timeout', String(s)]); return; }
+    if (s != null && flavor === 'contour') { set.push(['projectcontour.io/response-timeout', s + 's']); return; }
+  } else if (k === 'haproxy.router.openshift.io/ip_whitelist' && flavor === 'nginx') {
+    set.push(['nginx.ingress.kubernetes.io/whitelist-source-range', v.trim().split(/\s+/).join(',')]); return;
+  } else if (k === 'haproxy.router.openshift.io/rewrite-target' && flavor === 'nginx') {
+    set.push(['nginx.ingress.kubernetes.io/rewrite-target', v]); return;
+  }
+  if (/router\.openshift\.io\//.test(k)) W(`Route annotation ${k}=${v} has no automatic mapping for the "${flavor}" ingress option — configure it on your ingress controller.`);
+}
+
+function convertRoute(lines, meta, cfg, ctx, res) {
+  const info = analyze(texts(lines)), L0 = lines[0].n;
+  const f = (path, key) => field(info, path, key);
+  const W = (msg, level) => ctx.add({ level: level || 'warn', rule: 'OpenShift Route', line: L0, msg });
+  const name = meta.name, ns = meta.namespace;
+  const host = f(['spec'], 'host'), path = f(['spec'], 'path');
+  const svc = f(['spec', 'to'], 'name'), tport = f(['spec', 'port'], 'targetPort');
+  const hasTls = info.some(o => o.key === 'tls' && !o.inScalar && pk(o.path) === 'spec');
+  const term = hasTls ? (f(['spec', 'tls'], 'termination') || 'edge') : null;
+  const insecure = hasTls ? f(['spec', 'tls'], 'insecureEdgeTerminationPolicy') : null;
+  const flavor = cfg.ingressFlavor || 'generic';
+  const cls = (cfg.ingressClass || '').trim();
+  if (!svc) W('Route has no spec.to.name — set the backend Service name on the generated Ingress.');
+  if (info.some(o => o.key === 'alternateBackends' && !o.inScalar && pk(o.path) === 'spec')) W('alternateBackends (weighted traffic split) cannot be expressed with a standard Ingress — use a canary feature of your controller or a Gateway API HTTPRoute.');
+  if (f(['spec'], 'wildcardPolicy') === 'Subdomain') W('wildcardPolicy: Subdomain is not supported — a wildcard host (*.domain) must be configured manually.');
+  if (host && /\.apps\./.test(host)) W(`Route host ${host} uses the OpenShift apps domain — change the host / DNS to the VKS ingress address.`, 'info');
+
+  // annotations
+  const keep = [], set = [];
+  info.forEach(o => {
+    if (!o.key || o.inScalar || o.dash || pk(o.path) !== 'metadata.annotations') return;
+    if (BLOCK_SCALAR_RE.test(o.val)) { W(`Annotation ${o.key} is a block scalar and was not carried over.`); return; }
+    if (/openshift\.io\//.test(o.key)) mapRouteAnnotation(o.key, splitValue(o.val).val, flavor, set, W);
+    else keep.push([o.key, o.val.trim()]);
+  });
+
+  // TLS
+  let secretName = null, secretDoc = null;
+  if (term === 'edge' || term === 'reencrypt') {
+    const tk = key => info.find(o => o.key === key && !o.inScalar && pk(o.path) === 'spec.tls');
+    const certO = tk('certificate'), keyO = tk('key'), caO = tk('caCertificate');
+    const crt = scalarText(lines, info, certO), key = scalarText(lines, info, keyO), ca = scalarText(lines, info, caO);
+    if (crt && crt.length && key && key.length) {
+      secretName = name + '-tls';
+      const all = crt.concat(ca && ca.length ? ca : []);
+      secretDoc = ['apiVersion: v1', 'kind: Secret', 'metadata:', '  name: ' + secretName].concat(ns ? ['  namespace: ' + ns] : [],
+        ['type: kubernetes.io/tls', 'stringData:', '  tls.crt: |'], all.map(s => s ? '    ' + s : ''), ['  tls.key: |'], key.map(s => s ? '    ' + s : ''));
+      ctx.add({ level: 'fixed', rule: 'OpenShift Route', line: L0, before: 'Route inline certificate/key', after: 'Secret ' + secretName + ' (kubernetes.io/tls)' });
+      W(`The generated Secret ${secretName} contains the private key in plain text — move it to your secret store.`, 'info');
+    } else if (certO || keyO) {
+      W('Route has an inline certificate/key that is not a block scalar — create the TLS Secret manually.');
+    } else {
+      W('Route uses the router default certificate. The Ingress has no TLS secretName, so the VKS ingress controller default certificate will be used — add a TLS Secret / cert-manager Certificate if you need a specific certificate.', 'info');
+    }
+    if (term === 'reencrypt') {
+      if (flavor === 'nginx') set.push(['nginx.ingress.kubernetes.io/backend-protocol', 'HTTPS']);
+      W('Re-encrypt: the backend CA (destinationCACertificate) cannot be set on a standard Ingress — configure backend TLS verification on the controller.');
+    }
+    if (insecure === 'Redirect') {
+      if (flavor === 'nginx') set.push(['nginx.ingress.kubernetes.io/ssl-redirect', 'true']);
+      if (flavor === 'contour') set.push(['ingress.kubernetes.io/force-ssl-redirect', 'true']);
+    } else if (insecure === 'Allow') {
+      if (flavor === 'nginx') set.push(['nginx.ingress.kubernetes.io/ssl-redirect', 'false']);
+      else W('Route allowed plain HTTP (insecureEdgeTerminationPolicy: Allow) — most ingress controllers redirect HTTP to HTTPS when TLS is set; verify the behaviour.', 'info');
+    }
+  } else if (term === 'passthrough') {
+    if (flavor === 'nginx') { set.push(['nginx.ingress.kubernetes.io/ssl-passthrough', 'true']); W('ssl-passthrough requires the NGINX controller to run with --enable-ssl-passthrough.', 'info'); }
+    else W('TLS passthrough cannot be expressed with a standard Ingress on this controller — use HTTPProxy (Contour) / Gateway API TLSRoute, or terminate TLS at the ingress.');
+  }
+
+  // backend port
+  let portLine;
+  if (tport == null || tport === '') { portLine = 'number: 80'; W('Route has no spec.port.targetPort — Ingress needs a Service port. 80 is a placeholder; set the real Service port.'); }
+  else if (/^\d+$/.test(tport)) { portLine = 'number: ' + tport; W(`Route targetPort ${tport} is a Pod port; the Ingress needs the Service port — verify it matches Service ${svc || ''}.`, 'info'); }
+  else portLine = 'name: ' + tport;
+  if (!cls) W('Set spec.ingressClassName to your VKS ingress controller class (Contour / NGINX / Avi AKO). Fill the "Ingress class name" setting to do this automatically.');
+
+  // assemble Ingress
+  const labO = info.find(o => o.key === 'labels' && !o.inScalar && pk(o.path) === 'metadata');
+  const out = ['apiVersion: networking.k8s.io/v1', 'kind: Ingress', 'metadata:', '  name: ' + name];
+  if (ns) out.push('  namespace: ' + ns);
+  if (labO) out.push(...blockLines(lines, labO, blockEnd(info, labO.i), 2));
+  const annLines = keep.map(([k, v]) => '    ' + k + ': ' + v).concat(set.map(([k, v]) => '    ' + k + ': ' + JSON.stringify(v)));
+  if (annLines.length) out.push('  annotations:', ...annLines);
+  out.push('spec:');
+  if (cls) out.push('  ingressClassName: ' + cls);
+  if (term === 'edge' || term === 'reencrypt') {
+    out.push('  tls:');
+    if (host) out.push('  - hosts:', '    - ' + host, ...(secretName ? ['    secretName: ' + secretName] : []));
+    else out.push(...(secretName ? ['  - secretName: ' + secretName] : ['  - {}']));
+  }
+  out.push('  rules:');
+  out.push(host ? '  - host: ' + host : '  - http:');
+  if (host) out.push('    http:');
+  // "paths:" sits at 6 spaces both for "- host:/http:" and for "- http:" list items
+  const base = '      ';
+  out.push(base + 'paths:');
+  out.push(base + '- path: ' + (path || '/'), base + '  pathType: Prefix', base + '  backend:', base + '    service:', base + '      name: ' + (svc || 'SERVICE_NAME'), base + '      port:', base + '        ' + portLine);
+
+  ctx.add({ level: 'fixed', rule: 'OpenShift Route', line: L0, before: 'Route (route.openshift.io/v1)', after: 'Ingress (networking.k8s.io/v1)' });
+  ctx.stats.ocp++;
+  const mkl = arr => arr.map(t => ({ t, n: L0 }));
+  res.lines = mkl(out); res.extra = secretDoc ? [mkl(secretDoc)] : []; res.skipAnn = true; res.changed = true;
+  return res;
+}
+
+function applyScript(paths, kubeContext) {
+  const q = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
+  const out = [
+    '#!/usr/bin/env bash',
+    '# Apply the converted manifests to the target VCF VKS cluster.',
+    '# Usage:  bash apply.sh [dry-run|apply]      (default: dry-run)',
+    '# Notes:  - Run the image mirror first, otherwise pods end up in ImagePullBackOff.',
+    '#         - Server-side dry-run of namespaced objects needs the namespace to exist already.',
+    'set -euo pipefail',
+    'MODE="${1:-dry-run}"',
+    'CTX=' + q(kubeContext || '') + '   # kubectl context of the VKS cluster (empty = current context)',
+    'KUBECTL=(kubectl)',
+    '[ -n "$CTX" ] && KUBECTL+=(--context "$CTX")',
+    'cd "$(dirname "$0")"',
+    'FILES=('
+  ];
+  paths.forEach(p => out.push('  ' + q(p)));
+  out.push(')',
+    'case "$MODE" in',
+    '  dry-run) FLAGS=(--dry-run=server) ;;',
+    '  apply)   FLAGS=() ;;',
+    '  *) echo "usage: bash apply.sh [dry-run|apply]" >&2; exit 1 ;;',
+    'esac',
+    'for f in "${FILES[@]}"; do',
+    '  echo "==> $MODE: $f"',
+    '  "${KUBECTL[@]}" apply ${FLAGS[@]+"${FLAGS[@]}"} -f "$f"',
+    'done',
+    'echo "Done ($MODE)."');
+  return out.join('\n') + '\n';
+}
+
+/* ------------------------------------------------------------- tiny ZIP writer */
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(entries) {
+  const enc = new TextEncoder(); const chunks = []; const central = []; let off = 0;
+  const d = new Date();
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const u16 = (v, a) => { a.push(v & 255, (v >> 8) & 255); };
+  const u32 = (v, a) => { a.push(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255); };
+  for (const e of entries) {
+    const name = enc.encode(e.name), data = enc.encode(e.data), crc = crc32(data);
+    const h = [];
+    u32(0x04034b50, h); u16(20, h); u16(0x0800, h); u16(0, h); u16(time, h); u16(date, h);
+    u32(crc, h); u32(data.length, h); u32(data.length, h); u16(name.length, h); u16(0, h);
+    chunks.push(new Uint8Array(h), name, data);
+    const c = [];
+    u32(0x02014b50, c); u16((3 << 8) | 20, c); u16(20, c); u16(0x0800, c); u16(0, c); u16(time, c); u16(date, c);
+    u32(crc, c); u32(data.length, c); u32(data.length, c); u16(name.length, c); u16(0, c); u16(0, c);
+    u16(0, c); u16(0, c); u32(((e.mode || 0o100644) << 16) >>> 0, c); u32(off, c);
+    central.push(new Uint8Array(c), name);
+    off += h.length + name.length + data.length;
+  }
+  let csize = 0; central.forEach(x => csize += x.length);
+  const end = [];
+  u32(0x06054b50, end); u16(0, end); u16(0, end); u16(entries.length, end); u16(entries.length, end);
+  u32(csize, end); u32(off, end); u16(0, end);
+  return new Blob([...chunks, ...central, new Uint8Array(end)], { type: 'application/zip' });
+}
+
+return { DEFAULT_CONFIG, convert, mirrorScript, imageCsv, reportMd, applyScript, makeZip, crc32, parseImage };
+})();
+// ==== ENGINE END ====
+</script>
+
+<script id="ui">
+(function () {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const LS_KEY = 'vksMigrator.cfg.v2';
+  const E = ENGINE;
+
+  const state = {
+    step: 1, ready: false, seq: 0, sources: [], results: {}, cfg: null,
+    sel: '__all', tab: 'summary', filter: 'all', search: '', resIdx: null
+  };
+  const kb = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+  const lines = t => t.split('\n').length;
+
+  /* ================= config <-> form ================= */
+  function readCfg() {
+    const c = {};
+    $$('[data-cfg]').forEach(el => { c[el.dataset.cfg] = el.type === 'checkbox' ? el.checked : el.value; });
+    return c;
+  }
+  function writeCfg(c) {
+    $$('[data-cfg]').forEach(el => {
+      const v = c[el.dataset.cfg];
+      if (v === undefined) return;
+      if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+    });
+  }
+  function onCfgChange() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(readCfg())); } catch (e) { /* storage unavailable */ }
+    invalidate();
+  }
+  function loadCfg() {
+    let c = {};
+    try { c = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { c = {}; }
+    writeCfg(Object.assign({}, E.DEFAULT_CONFIG, c));
+  }
+  $$('[data-cfg]').forEach(el => { el.addEventListener('change', onCfgChange); el.addEventListener('input', onCfgChange); });
+  $('#btnReset').onclick = () => { writeCfg(E.DEFAULT_CONFIG); onCfgChange(); };
+
+  /* ================= steps ================= */
+  function invalidate() { if (state.ready) { state.ready = false; updateSteps(); } }
+  function updateSteps() {
+    $$('#steps .step').forEach(b => {
+      const n = +b.dataset.step;
+      b.classList.toggle('on', n === state.step);
+      b.disabled = n > 1 && !state.ready;
+    });
+    $$('.view').forEach(v => v.classList.toggle('on', v.id === 'view' + state.step));
+  }
+  function goStep(n) {
+    state.step = n; updateSteps();
+    if (n === 2) renderStep2();
+    if (n === 3) renderStep3();
+  }
+  $$('#steps .step').forEach(b => b.onclick = () => { if (!b.disabled) goStep(+b.dataset.step); });
+  $('#btnBack1').onclick = () => goStep(1);
+  $('#btnBack2').onclick = () => goStep(2);
+  $('#btnTo3').onclick = () => goStep(3);
+
+  /* ================= step 1 : sources ================= */
+  function uniqueName(name) {
+    const used = new Set(state.sources.map(s => s.name));
+    if (!used.has(name)) return name;
+    const m = /^(.*?)(\.[^./]+)?$/.exec(name);
+    let k = 2, n;
+    do { n = m[1] + ' (' + k + ')' + (m[2] || ''); k++; } while (used.has(n));
+    return n;
+  }
+  function addSource(name, text) {
+    state.sources.push({ id: 's' + (++state.seq), name: uniqueName(name), text: String(text).replace(/\r\n?/g, '\n').replace(/^﻿/, '') });
+    invalidate(); renderSources();
+  }
+  function platforms(text) {
+    const out = [];
+    if (/amazonaws\.com|eks\.amazonaws/i.test(text)) out.push('EKS');
+    if (/azurecr\.io|kubernetes\.azure\.com|azure\.workload\.identity|service\.beta\.kubernetes\.io\/azure|blob\.core\.windows/i.test(text)) out.push('AKS');
+    if (/\.gke\.io|cloud\.google\.com|gcr\.io|pkg\.dev/i.test(text)) out.push('GKE');
+    if (/openshift\.io|^kind:\s*(Route|DeploymentConfig)/im.test(text)) out.push('OCP');
+    return out;
+  }
+  const badges = ps => ps.map(p => `<span class="plat ${p}">${p}</span>`).join(' ');
+
+  function renderSources() {
+    const rows = $('#srcRows');
+    rows.hidden = !state.sources.length;
+    rows.innerHTML = state.sources.map(s =>
+      `<div class="srcrow"><span class="nm">${esc(s.name)}</span>${badges(platforms(s.text))}<span class="note">${lines(s.text)} lines · ${kb(s.text.length)}</span><span class="rm" data-rm="${s.id}" title="Remove">×</span></div>`).join('');
+    $$('[data-rm]').forEach(b => b.onclick = () => {
+      state.sources = state.sources.filter(s => s.id !== b.dataset.rm);
+      invalidate(); renderSources();
+    });
+    const n = state.sources.length;
+    $('#srcCount').textContent = n ? n + ' source' + (n > 1 ? 's' : '') : '';
+    $('#btnRun').disabled = !n;
+    $('#runNote').textContent = n ? (n > 1 ? 'Each file is analysed and exported as its own source.' : '') : 'Add at least one source.';
+  }
+
+  const drop = $('#drop'), fileInput = $('#fileInput'), dirInput = $('#dirInput');
+  drop.onclick = () => fileInput.click();
+  $('#btnPickFiles').onclick = () => fileInput.click();
+  $('#btnPickDir').onclick = () => dirInput.click();
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+  fileInput.onchange = () => { addFiles(fileInput.files); fileInput.value = ''; };
+  dirInput.onchange = () => { addFiles(dirInput.files); dirInput.value = ''; };
+  async function addFiles(list) {
+    const skipped = [];
+    for (const f of [...list]) {
+      const nm = f.webkitRelativePath || f.name;
+      if (!/\.(ya?ml|txt)$/i.test(f.name)) { skipped.push(nm); continue; }
+      addSource(nm, await f.text());
+    }
+    $('#skipNote').textContent = skipped.length ? `Skipped ${skipped.length} non-YAML file(s): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? ' …' : ''}` : '';
+  }
+  $('#btnAddPaste').onclick = () => {
+    const t = $('#paste').value;
+    if (!t.trim()) return;
+    let nm = $('#pasteName').value.trim() || 'pasted.yaml';
+    if (!/\.(ya?ml|txt)$/i.test(nm)) nm += '.yaml';
+    addSource(nm, t);
+    $('#paste').value = ''; $('#pasteName').value = '';
+  };
+  $('#btnSample').onclick = () => {
+    [['sample-eks.yaml', '#sample-eks'], ['sample-aks.yaml', '#sample-aks'], ['sample-ocp.yaml', '#sample-ocp']].forEach(([n, sel]) => {
+      if (!state.sources.some(s => s.name === n)) addSource(n, $(sel).textContent.replace(/^\n/, ''));
+    });
+  };
+  $('#btnClearAll').onclick = () => { state.sources = []; $('#skipNote').textContent = ''; invalidate(); renderSources(); };
+
+  /* ================= analysis ================= */
+  const sumLv = (log, lv) => log.filter(e => e.level === lv).length;
+  $('#btnRun').onclick = () => {
+    const cfg = readCfg();
+    if (!cfg.targetHost.trim() && !cfg.registryMap.trim() &&
+        !confirm('Target registry FQDN is empty — image references will NOT be rewritten. Continue?')) return;
+    state.cfg = cfg; state.results = {};
+    state.sources.forEach(s => {
+      try {
+        const res = E.convert([{ name: s.name, text: s.text }], cfg);
+        const f = res.files[0] || { text: '', docs: 0, inventory: [] };
+        state.results[s.id] = {
+          res, out: f.text, inv: f.inventory || [], inc: true, diff: null,
+          c: { fixed: sumLv(res.log, 'fixed'), warn: sumLv(res.log, 'warn'), error: sumLv(res.log, 'error'), info: sumLv(res.log, 'info') }
+        };
+      } catch (e) {
+        console.error(e);
+        state.results[s.id] = { err: e.message, inc: false, out: '', inv: [], c: { fixed: 0, warn: 0, error: 1, info: 0 }, res: { log: [], images: [], stats: {} } };
+      }
+    });
+    state.ready = true;
+    state.sel = state.sources.length > 1 ? '__all' : state.sources[0].id;
+    state.tab = state.sel === '__all' ? 'summary' : 'resources';
+    state.filter = 'all'; state.search = ''; state.resIdx = null;
+    goStep(2);
+  };
+
+  /* ================= step 2 ================= */
+  const chip = (cls, n, l) => `<div class="chip ${cls}"><div class="n">${esc(n)}</div><div class="l">${l}</div></div>`;
+  const srcById = id => state.sources.find(s => s.id === id);
+  const stat = (r, k) => (r.res.stats && r.res.stats[k]) || 0;
+  const worst = r => r.err || r.c.error ? 'error' : r.c.warn ? 'warn' : 'ok';
+
+  function totals(ids) {
+    const t = { docsIn: 0, docsOut: 0, dropped: 0, images: 0, annotations: 0, apis: 0, ocp: 0, fixed: 0, warn: 0, error: 0, info: 0 };
+    ids.forEach(id => {
+      const r = state.results[id];
+      ['docsIn', 'docsOut', 'dropped', 'images', 'annotations', 'apis', 'ocp'].forEach(k => t[k] += stat(r, k));
+      ['fixed', 'warn', 'error', 'info'].forEach(k => t[k] += r.c[k]);
+    });
+    return t;
+  }
+
+  function renderStep2() {
+    const cfg = state.cfg;
+    $('#runInfo').textContent = `${state.sources.length} source(s) analysed · registry ${cfg.targetHost || '(unchanged)'}${cfg.targetProject ? '/' + cfg.targetProject : ''}`;
+    renderSrcList(); renderDetail();
+  }
+
+  function renderSrcList() {
+    const ids = state.sources.map(s => s.id);
+    let h = '';
+    if (ids.length > 1) {
+      const t = totals(ids);
+      h += `<div class="srcitem all ${state.sel === '__all' ? 'on' : ''}" data-sel="__all"><div class="t">◫ All sources (${ids.length})</div>
+        <div class="mini">${t.docsIn} resources → ${t.docsOut} · <span class="ok-t">✓ ${t.fixed}</span> <span class="wr-t">⚠ ${t.warn}</span> <span class="er-t">⛔ ${t.error}</span></div></div>`;
+    }
+    state.sources.forEach(s => {
+      const r = state.results[s.id];
+      h += `<div class="srcitem ${worst(r)} ${state.sel === s.id ? 'on' : ''}" data-sel="${s.id}">
+        <label class="inc" title="Include in export"><input type="checkbox" data-inc="${s.id}" ${r.inc ? 'checked' : ''} ${r.err ? 'disabled' : ''}></label>
+        <div class="t">${esc(s.name)}</div><div>${badges(platforms(s.text))}</div>
+        <div class="mini">${r.err ? '<span class="er-t">failed: ' + esc(r.err) + '</span>' : `${stat(r, 'docsIn')} resources → ${stat(r, 'docsOut')} · <span class="ok-t">✓ ${r.c.fixed}</span> <span class="wr-t">⚠ ${r.c.warn}</span> <span class="er-t">⛔ ${r.c.error}</span>`}</div></div>`;
+    });
+    $('#srcList').innerHTML = h;
+  }
+  $('#srcList').addEventListener('click', e => {
+    if (e.target.closest('label.inc')) return;
+    const it = e.target.closest('[data-sel]');
+    if (it) select(it.dataset.sel);
+  });
+  $('#srcList').addEventListener('change', e => {
+    const c = e.target.closest('[data-inc]');
+    if (c) state.results[c.dataset.inc].inc = c.checked;
+  });
+  function select(id, tab) {
+    state.sel = id; state.filter = 'all'; state.search = ''; state.resIdx = null;
+    state.tab = tab || (id === '__all' ? 'summary' : 'resources');
+    renderSrcList(); renderDetail();
+  }
+
+  const TABS_ALL = [['summary', 'Summary'], ['review', 'Review items'], ['images', 'Images']];
+  const TABS_ONE = [['resources', 'Resources'], ['changes', 'Changes'], ['diff', 'Diff'], ['output', 'Output YAML'], ['images', 'Images']];
+
+  function renderDetail() {
+    const all = state.sel === '__all';
+    const ids = all ? state.sources.map(s => s.id) : [state.sel];
+    const t = totals(ids);
+    if (all) { $('#detailTitle').textContent = 'All sources'; $('#detailPlats').innerHTML = ''; }
+    else { const s = srcById(state.sel); $('#detailTitle').textContent = s.name; $('#detailPlats').innerHTML = badges(platforms(s.text)); }
+    $('#detailChips').innerHTML = [
+      chip('', t.docsIn + ' → ' + t.docsOut, 'Resources'), chip('fixed', t.images, 'Images rewritten'),
+      chip('fixed', t.annotations, 'Annotations removed'), chip('fixed', t.apis, 'APIs upgraded'),
+      ...(t.ocp ? [chip('fixed', t.ocp, 'OpenShift converted')] : []),
+      chip('fixed', t.dropped, 'Dropped'), chip('warn', t.warn, 'Need review'), chip('error', t.error, 'Errors')].join('');
+    renderTabs();
+  }
+  function renderTabs() {
+    const tabs = state.sel === '__all' ? TABS_ALL : TABS_ONE;
+    if (!tabs.some(t => t[0] === state.tab)) state.tab = tabs[0][0];
+    $('#detailTabs').innerHTML = tabs.map(([k, l]) => `<div class="tab ${k === state.tab ? 'on' : ''}" data-tab="${k}">${l}</div>`).join('');
+    renderBody();
+  }
+
+  /* ---- log table (shared by Changes and Review items) ---- */
+  let logCtx = { entries: [], withSource: false, levels: [] };
+  const ICON = { fixed: 'FIXED', warn: 'WARN', error: 'ERROR', info: 'INFO' };
+  const LABEL = { all: 'All', error: '⛔ Error', warn: '⚠ Warn', info: 'ℹ Info', fixed: '✓ Fixed' };
+  function paneLog(entries, withSource, levels) {
+    logCtx = { entries, withSource, levels };
+    let pill = '';
+    if (state.resIdx != null) {
+      const it = (state.results[state.sel].inv || [])[state.resIdx];
+      if (it) pill = `<span class="pill">Resource: ${esc(it.kind)}${it.name ? '/' + esc(it.name) : ''}<b data-clr="1" title="Clear">×</b></span>`;
+    }
+    $('#detailBody').innerHTML = `<div class="filters" id="filters"></div>${pill ? '<div style="margin-bottom:8px">' + pill + '</div>' : ''}
+      <div class="scroll"><table><thead><tr><th>Level</th>${withSource ? '<th>Source</th>' : ''}<th>Resource</th><th>Line</th><th>Rule</th><th>Detail</th></tr></thead><tbody id="chgBody"></tbody></table></div>`;
+    renderFilters(); renderLogRows();
+  }
+  function visibleEntries() {
+    const q = state.search.toLowerCase();
+    return logCtx.entries.filter(e => (state.resIdx == null || e.idx === state.resIdx) &&
+      (state.filter === 'all' || e.level === state.filter) && (!q || JSON.stringify(e).toLowerCase().includes(q)));
+  }
+  function renderFilters() {
+    const base = logCtx.entries.filter(e => state.resIdx == null || e.idx === state.resIdx);
+    const cnt = l => l === 'all' ? base.length : base.filter(e => e.level === l).length;
+    $('#filters').innerHTML = ['all', ...logCtx.levels].map(k => `<button data-f="${k}" class="${state.filter === k ? 'on' : ''}">${LABEL[k]} (${cnt(k)})</button>`).join('') +
+      `<input type="text" id="search" placeholder="search…" value="${esc(state.search)}">`;
+  }
+  function renderLogRows() {
+    const order = { error: 0, warn: 1, info: 2, fixed: 3 };
+    const rows = visibleEntries().slice().sort((a, b) => order[a.level] - order[b.level]);
+    const LIMIT = 3000;
+    const span = logCtx.withSource ? 6 : 5;
+    $('#chgBody').innerHTML = rows.length ? rows.slice(0, LIMIT).map(e => {
+      const detail = e.before !== undefined
+        ? `<code class="del">${esc(e.before)}</code> <span class="arrow">→</span> <code class="add">${esc(e.after)}</code>` : esc(e.msg || '');
+      return `<tr><td><span class="lv ${e.level}">${ICON[e.level]}</span></td>${logCtx.withSource ? `<td class="mono"><a href="#" data-goto="${esc(e.file)}" style="color:var(--accent)">${esc(e.file)}</a></td>` : ''}<td class="mono">${esc(e.doc || '')}</td><td>${esc(e.line || '')}</td><td>${esc(e.rule)}</td><td>${detail}</td></tr>`;
+    }).join('') + (rows.length > LIMIT ? `<tr><td colspan="${span}" class="note">Showing first ${LIMIT} of ${rows.length}. The full list is in the ZIP report.</td></tr>` : '')
+      : `<tr><td colspan="${span}" class="empty">Nothing to show.</td></tr>`;
+  }
+
+  /* ---- diff ---- */
+  function diffLines(a, b) {
+    const A = a.split('\n'), B = b.split('\n');
+    let s = 0;
+    while (s < A.length && s < B.length && A[s] === B[s]) s++;
+    let ea = A.length, eb = B.length;
+    while (ea > s && eb > s && A[ea - 1] === B[eb - 1]) { ea--; eb--; }
+    const rows = [];
+    for (let i = 0; i < s; i++) rows.push(['=', A[i]]);
+    const n = ea - s, m = eb - s;
+    if (n * m > 9e6) {
+      for (let i = 0; i < n; i++) rows.push(['-', A[s + i]]);
+      for (let j = 0; j < m; j++) rows.push(['+', B[s + j]]);
+    } else {
+      const w = m + 1, dp = new Uint16Array((n + 1) * w);
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+        dp[i * w + j] = A[s + i] === B[s + j] ? dp[(i + 1) * w + j + 1] + 1 : Math.max(dp[(i + 1) * w + j], dp[i * w + j + 1]);
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (A[s + i] === B[s + j]) { rows.push(['=', A[s + i]]); i++; j++; }
+        else if (dp[(i + 1) * w + j] >= dp[i * w + j + 1]) { rows.push(['-', A[s + i]]); i++; }
+        else { rows.push(['+', B[s + j]]); j++; }
+      }
+      while (i < n) rows.push(['-', A[s + i++]]);
+      while (j < m) rows.push(['+', B[s + j++]]);
+    }
+    for (let i = ea; i < A.length; i++) rows.push(['=', A[i]]);
+    return rows;
+  }
+  function renderDiff(id) {
+    const r = state.results[id], s = srcById(id);
+    if (!r.diff) r.diff = diffLines(s.text.replace(/\n+$/, ''), r.out.replace(/\n+$/, ''));
+    const rows = r.diff, CTX = 3;
+    const keep = new Array(rows.length).fill(false);
+    rows.forEach((x, i) => { if (x[0] !== '=') for (let k = Math.max(0, i - CTX); k <= Math.min(rows.length - 1, i + CTX); k++) keep[k] = true; });
+    let out = '', skipped = 0, shown = 0, add = 0, del = 0;
+    const flush = () => { if (skipped) { out += `<div class="dl skip">… ${skipped} unchanged line(s)</div>`; skipped = 0; } };
+    rows.forEach((x, i) => {
+      if (x[0] === '+') add++; if (x[0] === '-') del++;
+      if (!keep[i]) { skipped++; return; }
+      flush();
+      if (shown++ > 6000) return;
+      out += `<div class="dl ${x[0] === '+' ? 'add' : x[0] === '-' ? 'del' : ''}">${x[0] === '=' ? '  ' : x[0] + ' '}${esc(x[1])}</div>`;
+    });
+    flush();
+    $('#detailBody').innerHTML = `<div class="note" style="margin-bottom:8px">Original → converted · <span class="add">+${add}</span> <span class="del">−${del}</span> lines</div><div class="diff">${out || '<div class="empty">No differences.</div>'}</div>`;
+  }
+
+  /* ---- downloads / helpers ---- */
+  function download(name, data, type) {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: type || 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  const safe = n => n.replace(/[\\/:*?"<>|]+/g, '_');
+  function exportNames() {
+    const used = new Set(), m = {};
+    state.sources.forEach(s => {
+      const base = safe(s.name.replace(/\.(ya?ml|txt)$/i, ''));
+      let n = base + '.vks.yaml', k = 2;
+      while (used.has(n)) n = base + '-' + (k++) + '.vks.yaml';
+      used.add(n); m[s.id] = n;
+    });
+    return m;
+  }
+  function mergedImages(ids) {
+    const map = new Map();
+    ids.forEach(id => state.results[id].res.images.forEach(i => {
+      if (!map.has(i.src)) map.set(i.src, { src: i.src, dst: i.dst, dstCopy: i.dstCopy, used: [] });
+      map.get(i.src).used.push(srcById(id).name);
+    }));
+    return [...map.values()];
+  }
+  function mergedRes(ids) {
+    const log = [], stats = {};
+    ids.forEach(id => {
+      const r = state.results[id];
+      r.res.log.forEach(e => log.push(e));
+      Object.keys(r.res.stats || {}).forEach(k => stats[k] = (stats[k] || 0) + r.res.stats[k]);
+    });
+    return { log, stats, images: mergedImages(ids) };
+  }
+  function imagesTable(list, withUsed) {
+    return `<div class="toolbar"><button id="btnCsv" ${list.length ? '' : 'disabled'}>Download image-map.csv</button><button id="btnMirror" ${list.length ? '' : 'disabled'}>Download image-mirror.sh (skopeo)</button></div>
+      <div class="scroll"><table><thead><tr><th>Source image</th><th>Target image</th>${withUsed ? '<th>Used in</th>' : ''}</tr></thead><tbody>` +
+      (list.length ? list.map(i => `<tr><td class="mono">${esc(i.src)}</td><td class="mono">${esc(i.dst)}</td>${withUsed ? `<td class="mono">${esc(i.used.join(', '))}</td>` : ''}</tr>`).join('') : `<tr><td colspan="3" class="empty">No images were rewritten.</td></tr>`) + '</tbody></table></div>';
+  }
+
+  /* ---- tab bodies ---- */
+  let imgList = [];
+  function renderBody() {
+    const all = state.sel === '__all', body = $('#detailBody');
+    const ids = state.sources.map(s => s.id);
+    if (all && state.tab === 'summary') {
+      body.innerHTML = `<div class="note" style="margin-bottom:8px">Click a source to open its details.</div><div class="scroll"><table><thead><tr><th>Source</th><th>Platform</th><th>Resources</th><th>Dropped</th><th>Images</th><th>Annot.</th><th>APIs</th><th>Warn</th><th>Err</th><th>Export</th></tr></thead><tbody>` +
+        state.sources.map(s => { const r = state.results[s.id]; return `<tr class="click" data-sumrow="${s.id}"><td class="mono">${esc(s.name)}</td><td>${badges(platforms(s.text))}</td><td>${stat(r, 'docsIn')} → ${stat(r, 'docsOut')}</td><td>${stat(r, 'dropped')}</td><td>${stat(r, 'images')}</td><td>${stat(r, 'annotations')}</td><td>${stat(r, 'apis')}</td><td class="wr-t">${r.c.warn}</td><td class="er-t">${r.c.error}</td><td>${r.inc ? '☑' : '☐'}</td></tr>`; }).join('') + '</tbody></table></div>';
+    } else if (all && state.tab === 'review') {
+      paneLog(ids.flatMap(id => state.results[id].res.log).filter(e => e.level !== 'fixed'), true, ['error', 'warn', 'info']);
+    } else if (all && state.tab === 'images') {
+      imgList = mergedImages(ids); body.innerHTML = imagesTable(imgList, true);
+    } else if (state.tab === 'resources') {
+      const r = state.results[state.sel];
+      body.innerHTML = r.inv.length ? `<div class="note" style="margin-bottom:8px">Click a resource to see its changes.</div><div class="scroll"><table><thead><tr><th>#</th><th>Kind</th><th>Name</th><th>Namespace</th><th>apiVersion (source)</th><th>Result</th><th>Fixed</th><th>Warn</th></tr></thead><tbody>` +
+        r.inv.map(it => {
+          const res = it.generated ? '<span class="lv fixed">CREATED</span> <span class="note">generated from a Route</span>' : it.dropped ?`<span class="lv fixed">DROPPED</span> <span class="note">${esc(it.reason)}</span>` : it.error ? '<span class="lv error">ERROR</span>' : it.warn ? '<span class="lv warn">REVIEW</span>' : it.fixed ? '<span class="lv fixed">CHANGED</span>' : '<span class="lv none">OK</span>';
+          return `<tr class="click" data-res="${it.idx}"><td>${it.idx + 1}</td><td class="mono">${esc(it.kind)}</td><td class="mono">${esc(it.name)}</td><td class="mono">${esc(it.namespace)}</td><td class="mono">${esc(it.apiVersion)}</td><td>${res}</td><td>${it.fixed}</td><td class="wr-t">${it.warn || ''}</td></tr>`;
+        }).join('') + '</tbody></table></div>' : '<div class="empty">No resources found in this source.</div>';
+    } else if (state.tab === 'changes') {
+      paneLog(state.results[state.sel].res.log, false, ['error', 'warn', 'info', 'fixed']);
+    } else if (state.tab === 'diff') {
+      renderDiff(state.sel);
+    } else if (state.tab === 'output') {
+      const r = state.results[state.sel];
+      body.innerHTML = `<div class="toolbar"><button id="btnCopy">Copy</button><button id="btnDlYaml">Download this YAML</button></div><pre class="out" id="yamlOut"></pre>`;
+      $('#yamlOut').textContent = r.out || '# (empty — every document was dropped or the input was invalid)';
+    } else if (state.tab === 'images') {
+      imgList = state.results[state.sel].res.images; body.innerHTML = imagesTable(imgList, false);
+    }
+  }
+
+  $('#detail').addEventListener('click', async e => {
+    const t = e.target;
+    const tab = t.closest('[data-tab]');
+    if (tab) { state.tab = tab.dataset.tab; state.filter = 'all'; state.search = ''; if (state.tab !== 'changes') state.resIdx = null; renderTabs(); return; }
+    const f = t.closest('[data-f]');
+    if (f) { state.filter = f.dataset.f; renderFilters(); renderLogRows(); return; }
+    const g = t.closest('[data-goto]');
+    if (g) { e.preventDefault(); const s = state.sources.find(x => x.name === g.dataset.goto); if (s) select(s.id, 'changes'); return; }
+    const sr = t.closest('[data-sumrow]');
+    if (sr) { select(sr.dataset.sumrow); return; }
+    const rs = t.closest('[data-res]');
+    if (rs) { state.resIdx = +rs.dataset.res; state.tab = 'changes'; state.filter = 'all'; state.search = ''; renderTabs(); return; }
+    if (t.closest('[data-clr]')) { state.resIdx = null; renderBody(); return; }
+    const id = t.id;
+    if (id === 'btnCopy') {
+      const txt = state.results[state.sel].out;
+      try { await navigator.clipboard.writeText(txt); t.textContent = 'Copied ✓'; }
+      catch (err) { const r = document.createRange(); r.selectNodeContents($('#yamlOut')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); t.textContent = 'Selected — press Ctrl+C'; }
+      setTimeout(() => t.textContent = 'Copy', 1800);
+    }
+    if (id === 'btnDlYaml') download(exportNames()[state.sel], state.results[state.sel].out, 'text/yaml');
+    if (id === 'btnCsv') download('image-map.csv', E.imageCsv(imgList), 'text/csv');
+    if (id === 'btnMirror') download('image-mirror.sh', E.mirrorScript(imgList), 'text/x-shellscript');
+  });
+  $('#detail').addEventListener('input', e => {
+    if (e.target.id === 'search') { state.search = e.target.value; renderLogRows(); const n = e.target.value.length; renderFilters(); const s = $('#search'); s.focus(); s.setSelectionRange(n, n); }
+  });
+
+  /* ================= step 3 : export ================= */
+  function renderStep3() {
+    const names = exportNames();
+    const ids = state.sources.map(s => s.id);
+    const t = totals(ids.filter(id => !state.results[id].err));
+    $('#exportInfo').textContent = `Target: ${state.cfg.targetHost || '(registry unchanged)'}${state.cfg.targetProject ? '/' + state.cfg.targetProject : ''}${state.cfg.kubeContext ? ' · context ' + state.cfg.kubeContext : ''}`;
+    $('#exportBanner').innerHTML = t.warn || t.error
+      ? `<div class="banner">${t.warn} item(s) still need manual review${t.error ? ', ' + t.error + ' error(s)' : ''} — see the Analysis step (Review items) before applying to the VKS cluster.</div>` : '';
+    $('#exportBody').innerHTML = state.sources.map(s => {
+      const r = state.results[s.id];
+      return `<tr><td><input type="checkbox" data-exc="${s.id}" ${r.inc ? 'checked' : ''} ${r.err ? 'disabled' : ''}></td>
+        <td class="mono">${esc(s.name)}<div>${badges(platforms(s.text))}</div></td><td class="mono">manifests/${esc(names[s.id])}</td>
+        <td>${stat(r, 'docsIn')} → ${stat(r, 'docsOut')}</td><td>${stat(r, 'images')}</td>
+        <td><span class="wr-t">⚠ ${r.c.warn}</span> <span class="er-t">⛔ ${r.c.error}</span></td>
+        <td><button class="sm" data-dly="${s.id}" ${r.err ? 'disabled' : ''}>⬇ YAML</button> <button class="sm" data-dlz="${s.id}" ${r.err ? 'disabled' : ''}>⬇ ZIP</button></td></tr>`;
+    }).join('');
+    updateExportCount();
+  }
+  function selectedIds() { return state.sources.filter(s => state.results[s.id].inc && !state.results[s.id].err).map(s => s.id); }
+  function updateExportCount() {
+    const n = selectedIds().length;
+    $('#exportCount').textContent = `${n} of ${state.sources.length} selected`;
+    $('#btnZipSel').disabled = $('#btnCombined').disabled = !n;
+    $('#btnZipAll').disabled = !state.sources.some(s => !state.results[s.id].err);
+  }
+  $('#exportBody').addEventListener('change', e => {
+    const c = e.target.closest('[data-exc]');
+    if (c) { state.results[c.dataset.exc].inc = c.checked; updateExportCount(); }
+  });
+  $('#exportBody').addEventListener('click', e => {
+    const y = e.target.closest('[data-dly]'), z = e.target.closest('[data-dlz]');
+    if (y) download(exportNames()[y.dataset.dly], state.results[y.dataset.dly].out, 'text/yaml');
+    if (z) { const id = z.dataset.dlz; download(safe(srcById(id).name.replace(/\.(ya?ml|txt)$/i, '')) + '-vks-bundle.zip', buildZip([id])); }
+  });
+  function setAll(v) { state.sources.forEach(s => { if (!state.results[s.id].err) state.results[s.id].inc = v; }); renderStep3(); }
+  $('#btnSelAll').onclick = () => setAll(true);
+  $('#btnSelNone').onclick = () => setAll(false);
+
+  function buildZip(ids) {
+    const names = exportNames(), entries = [], paths = [];
+    ids.forEach(id => {
+      const r = state.results[id];
+      entries.push({ name: 'manifests/' + names[id], data: r.out });
+      if (r.out) paths.push('manifests/' + names[id]);
+    });
+    const merged = mergedRes(ids);
+    if ($('#optReports').checked) {
+      if (ids.length > 1) entries.push({ name: 'reports/summary.md', data: E.reportMd(merged) });
+      ids.forEach(id => entries.push({ name: 'reports/' + names[id].replace(/\.vks\.yaml$/, '') + '.report.md', data: E.reportMd(state.results[id].res) }));
+    }
+    if ($('#optImages').checked && merged.images.length) {
+      entries.push({ name: 'images/image-map.csv', data: E.imageCsv(merged.images) });
+      entries.push({ name: 'images/image-mirror.sh', data: E.mirrorScript(merged.images), mode: 0o100755 });
+    }
+    if ($('#optApply').checked) entries.push({ name: 'apply.sh', data: E.applyScript(paths, state.cfg.kubeContext), mode: 0o100755 });
+    entries.push({
+      name: 'README.txt', data: [
+        'VKS migration bundle (' + ids.length + ' source' + (ids.length > 1 ? 's' : '') + ')', '',
+        '1. Mirror images into the on-prem registry :  bash images/image-mirror.sh',
+        '2. Server-side dry run on the VKS cluster  :  bash apply.sh dry-run',
+        '3. Apply                                   :  bash apply.sh apply', '',
+        'Review reports/ for items that need manual work (Secrets, LoadBalancers, RWX PVCs, Ingress class ...).'
+      ].join('\n') + '\n'
+    });
+    return E.makeZip(entries);
+  }
+  $('#btnZipSel').onclick = () => download('vks-migration-bundle.zip', buildZip(selectedIds()));
+  $('#btnZipAll').onclick = () => download('vks-migration-bundle-all.zip', buildZip(state.sources.filter(s => !state.results[s.id].err).map(s => s.id)));
+  $('#btnCombined').onclick = () => {
+    const names = exportNames();
+    download('all-converted.vks.yaml', selectedIds().filter(id => state.results[id].out).map(id => '# ===== ' + names[id] + ' =====\n---\n' + state.results[id].out).join(''), 'text/yaml');
+  };
+
+  /* ================= init ================= */
+  loadCfg(); renderSources(); updateSteps();
+  window.__vks = { state, buildZip, exportNames };  // handy for debugging in the browser console
+})();
+</script>
+</body>
+</html>
